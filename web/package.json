@@ -57,20 +57,20 @@
     {
       "name": "initial JS (gzip)",
       "path": "dist/assets/index-*.js",
-      "limit": "250 kB",
+      "limit": "100 kB",
       "gzip": true
     },
     {
-      "name": "county data (brotli)",
-      "path": "web/public/data/counties.json",
-      "limit": "120 kB",
-      "brotli": true
+      "name": "rankings payload (gzip)",
+      "path": "public/data/rankings.json",
+      "limit": "600 kB",
+      "gzip": true
     },
     {
-      "name": "map topology (brotli)",
-      "path": "web/public/data/topo.json",
-      "limit": "250 kB",
-      "brotli": true
+      "name": "map topology (gzip)",
+      "path": "public/data/topo.json",
+      "limit": "500 kB",
+      "gzip": true
     }
   ]
 }
