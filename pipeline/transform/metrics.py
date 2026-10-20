@@ -24,6 +24,7 @@ from pipeline.transform.geography import (
     filter_to_universe,
     impute_ct_state_mean,
 )
+from pipeline.transform.shrink import empirical_bayes_shrink
 
 
 def _acs_wide(manifest: Manifest) -> pl.DataFrame:
@@ -150,6 +151,23 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
 
     # ---- IRS CT reconciliation -------------------------------------------
     df = impute_ct_state_mean(df, "inv_ret_income_per_return", out_col="irs_investment_income_per_return")
+
+    # ---- Empirical-Bayes shrinkage for noisy small-county rates -----------
+    # Agency density and the PLACES composites are unstable in tiny counties;
+    # shrink toward the state mean, weighed by the 60+ denominator.
+    df = df.with_columns(state=pl.col("fips").str.slice(0, 2))
+    df = empirical_bayes_shrink(
+        df, value_col="agencies_per_1000_60plus", denom_col="pop_60plus",
+        out_col="agencies_per_1000_60plus", flag_col="shrunk_agencies",
+    )
+    df = empirical_bayes_shrink(
+        df, value_col="chronic_burden_composite", denom_col="B01001_E031" if "B01001_E031" in df.columns else "pop_60plus",
+        out_col="chronic_burden_composite", flag_col="shrunk_chronic",
+    )
+    df = empirical_bayes_shrink(
+        df, value_col="risk_behaviour_composite", denom_col="B01001_E031" if "B01001_E031" in df.columns else "pop_60plus",
+        out_col="risk_behaviour_composite", flag_col="shrunk_risk",
+    )
 
     # ---- Synthetic priors (modelled, never scored) ------------------------
     rates = _income_band_ownership_rates()
