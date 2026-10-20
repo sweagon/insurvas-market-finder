@@ -53,8 +53,8 @@ sources:
     license: "Public domain (US Government work)"
     attribution: "U.S. Census Bureau, Population Estimates Program"
   acs:
-    name: "American Community Survey 2020-2024 5-year"
-    url: "https://api.census.gov/data/2024/acs/acs5"
+    name: "American Community Survey 2020-2024 5-year, table-based Summary File"
+    url: "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/"
     license: "Public domain (US Government work)"
     attribution: "U.S. Census Bureau, American Community Survey"
   gazetteer:
@@ -226,7 +226,7 @@ metrics:
     label: Interest, dividend, IRA and pension income per tax return
     subscore: affordability
     source: irs
-    table_field: "A00300 (interest) + A00600 (dividends) + A00800 (IRA) + A01000 (pensions) / N00100"
+    table_field: "A00300 (interest) + A00600 (dividends) + A01400 (IRA) + A01700 (pensions) / N1"
     vintage: "TY2023"
     unit: usd
     direction: higher_is_better
@@ -240,7 +240,7 @@ metrics:
     label: Housing equity proxy for 65+ owners (mortgage-free value)
     subscore: affordability
     source: acs
-    table_field: "B25007 (65+ owner-occupied without mortgage share) x B25077 (median home value)"
+    table_field: "B25027 (65+ owner units without mortgage / all 65+ owner units) x B25077 (median home value)"
     vintage: "2020-2024"
     unit: usd
     direction: higher_is_better
@@ -269,7 +269,7 @@ metrics:
     label: Share of 65+ owners still paying a mortgage
     subscore: need
     source: acs
-    table_field: "B25007: 65+ owner-occupied with mortgage / 65+ owner-occupied total"
+    table_field: "B25027: 65+ with mortgage / (65+ with + without mortgage)"
     vintage: "2020-2024"
     unit: share
     direction: higher_is_better
@@ -342,7 +342,7 @@ metrics:
     label: Risk-behaviour burden (adults 18+)
     subscore: insurability
     source: places
-    table_field: "PLACES crude prevalence: OBESITY, SMOKING, LPA (no leisure-time activity); mean z-score"
+    table_field: "PLACES crude prevalence: OBESITY, CSMOKING, LPA (no leisure-time activity); mean z-score"
     vintage: "2025"
     unit: index
     direction: lower_is_better
