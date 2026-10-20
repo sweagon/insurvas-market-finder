@@ -166,10 +166,11 @@ def _write_rankings_json(cfg, identity: pl.DataFrame, lens_scores: dict[str, pl.
         for lid, frame in lens_frames.items():
             rec["scores"][lid] = {
                 "total": round(float(frame["total"][i]), 2),
-                "p05": round(float(frame["p05"][i]), 2),
-                "p95": round(float(frame["p95"][i]), 2),
+                "p05": round(float(frame["p05"][i]), 1),
+                "p95": round(float(frame["p95"][i]), 1),
                 "rank": (int(frame["rank"][i]) if frame["rank"][i] is not None else None),
                 "eligible": bool(frame["eligible"][i]),
+                "sub": {s: round(float(frame[f"sub_{s}"][i]), 3) for s in cfg.sub_score_ids()},
             }
         records.append(rec)
     payload = {"meta": meta, "lenses": {

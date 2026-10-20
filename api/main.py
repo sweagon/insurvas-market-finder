@@ -16,6 +16,7 @@ Design notes
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 from datetime import UTC, datetime
@@ -78,6 +79,15 @@ def health() -> dict:
         "age_days": age_days,
         "stale_after_days": STALE_AFTER_DAYS,
     }
+
+
+@app.get("/api/rankings/all")
+def rankings_all() -> JSONResponse:
+    """Full rankings payload for the SPA (same shape as the static snapshot)."""
+    snapshot = paths.WEB_PUBLIC_DATA / "rankings.json"
+    if not snapshot.exists():
+        raise HTTPException(status_code=503, detail="Rankings snapshot not built. Run `make build`.")
+    return JSONResponse(content=json.loads(snapshot.read_text(encoding="utf-8")))
 
 
 @app.get("/api/meta")
