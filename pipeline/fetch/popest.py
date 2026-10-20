@@ -48,7 +48,7 @@ def _download(state_fips: str, kind: str, manifest: Manifest) -> pl.DataFrame:
         result.manifest_entry(vintage="2025", source="popest", geography="county"),
     )
     assert result.path is not None
-    return pl.read_csv(io.BytesIO(result.path.read_bytes()))
+    return pl.read_csv(io.BytesIO(result.path.read_bytes()), encoding="utf8-lossy")
 
 
 def _fips_expr() -> pl.Expr:
@@ -75,9 +75,11 @@ def fetch_popest(manifest: Manifest, *, states: list[str] | None = None) -> pl.D
     Output columns: fips, state, stname, ctyname, total_pop, pop_60plus,
     pop_65plus, pop_70plus, pop_75plus, pop_60plus_2020, growth_60plus.
     """
-    wanted = states or list(STATE_FIPS)
+    wanted = states or [s for s in STATE_FIPS if s != "72"]
     frames: list[pl.DataFrame] = []
     for ss in wanted:
+        if ss == "72":
+            continue  # PR uses a different (municipio) schema and is excluded
         agesex = _download(ss, "agesex", manifest)
         syasex = _download(ss, "syasex", manifest)
 
