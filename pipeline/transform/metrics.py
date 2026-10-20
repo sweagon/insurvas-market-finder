@@ -12,16 +12,14 @@ from __future__ import annotations
 
 import polars as pl
 
-from pipeline.fetch.http import Manifest
 from pipeline.fetch import census_acs, popest
 from pipeline.fetch.bea import fetch_bea
 from pipeline.fetch.cbp import fetch_cbp
 from pipeline.fetch.geography import fetch_geography
+from pipeline.fetch.http import Manifest
 from pipeline.fetch.irs_soi import fetch_irs
 from pipeline.fetch.places import CHRONIC_MEASURES, RISK_MEASURES, fetch_places
 from pipeline.transform.geography import (
-    CT_PLANNING_REGIONS,
-    filter_to_universe,
     impute_ct_state_mean,
 )
 from pipeline.transform.shrink import empirical_bayes_shrink
@@ -33,7 +31,9 @@ def _acs_wide(manifest: Manifest) -> pl.DataFrame:
 
 def _gazetteer(gazetteer_path) -> pl.DataFrame:
     """Land area (square miles) per county from the 2024 Gazetteer."""
-    df = pl.read_csv(gazetteer_path, separator="\t", infer_schema_length=5000, encoding="utf8-lossy")
+    df = pl.read_csv(
+        gazetteer_path, separator="\t", infer_schema_length=5000, encoding="utf8-lossy"
+    )
     fips_col = next(c for c in df.columns if c.strip() == "GEOID")
     area_col = next(c for c in df.columns if c.strip() == "ALAND_SQMI")
     return df.select(
@@ -88,8 +88,12 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     # ---- Affordability ----------------------------------------------------
     b65 = pl.col("B19037_E053")
     hh_75k_plus = pl.sum_horizontal([pl.col(f"B19037_E{i:03d}") for i in range(65, 70)])
-    low_bands = [pl.col(f"B19037_E{i:03d}") for i in range(54, 70)]
-    owner_total = pl.col("B25027_E008") + pl.col("B25027_E009") + pl.col("B25027_E016") + pl.col("B25027_E017")
+    owner_total = (
+        pl.col("B25027_E008")
+        + pl.col("B25027_E009")
+        + pl.col("B25027_E016")
+        + pl.col("B25027_E017")
+    )
     owner_nomort = pl.col("B25027_E016") + pl.col("B25027_E017")
 
     df = df.with_columns(
@@ -150,30 +154,43 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     )
 
     # ---- IRS CT reconciliation -------------------------------------------
-    df = impute_ct_state_mean(df, "inv_ret_income_per_return", out_col="irs_investment_income_per_return")
+    df = impute_ct_state_mean(
+        df, "inv_ret_income_per_return", out_col="irs_investment_income_per_return"
+    )
 
     # ---- Empirical-Bayes shrinkage for noisy small-county rates -----------
     # Agency density and the PLACES composites are unstable in tiny counties;
     # shrink toward the state mean, weighed by the 60+ denominator.
     df = df.with_columns(state=pl.col("fips").str.slice(0, 2))
     df = empirical_bayes_shrink(
-        df, value_col="agencies_per_1000_60plus", denom_col="pop_60plus",
-        out_col="agencies_per_1000_60plus", flag_col="shrunk_agencies",
+        df,
+        value_col="agencies_per_1000_60plus",
+        denom_col="pop_60plus",
+        out_col="agencies_per_1000_60plus",
+        flag_col="shrunk_agencies",
     )
     df = empirical_bayes_shrink(
-        df, value_col="chronic_burden_composite", denom_col="B01001_E031" if "B01001_E031" in df.columns else "pop_60plus",
-        out_col="chronic_burden_composite", flag_col="shrunk_chronic",
+        df,
+        value_col="chronic_burden_composite",
+        denom_col="B01001_E031" if "B01001_E031" in df.columns else "pop_60plus",
+        out_col="chronic_burden_composite",
+        flag_col="shrunk_chronic",
     )
     df = empirical_bayes_shrink(
-        df, value_col="risk_behaviour_composite", denom_col="B01001_E031" if "B01001_E031" in df.columns else "pop_60plus",
-        out_col="risk_behaviour_composite", flag_col="shrunk_risk",
+        df,
+        value_col="risk_behaviour_composite",
+        denom_col="B01001_E031" if "B01001_E031" in df.columns else "pop_60plus",
+        out_col="risk_behaviour_composite",
+        flag_col="shrunk_risk",
     )
 
     # ---- Synthetic priors (modelled, never scored) ------------------------
     rates = _income_band_ownership_rates()
     band_exprs = [pl.col(f"B19037_E{i:03d}") for i in range(54, 70)]
     total_65_hh = pl.col("B19037_E053")
-    ownership_numerator = pl.sum_horizontal([expr * r for expr, r in zip(band_exprs, rates)])
+    ownership_numerator = pl.sum_horizontal(
+        [expr * r for expr, r in zip(band_exprs, rates, strict=True)]
+    )
     df = df.with_columns(
         expected_ownership_65=pl.when(total_65_hh > 0)
         .then(ownership_numerator / total_65_hh)

@@ -39,10 +39,9 @@ def empirical_bayes_shrink(
         .then(pl.col(denom_col) / (pl.col(denom_col) + pl.col("k")))
         .otherwise(pl.lit(0.0)),
     )
-    shrunk = (
-        pl.col("_w") * pl.col(value_col).fill_null(pl.col("group_mean"))
-        + (1 - pl.col("_w")) * pl.col("group_mean")
-    )
+    shrunk = pl.col("_w") * pl.col(value_col).fill_null(pl.col("group_mean")) + (
+        1 - pl.col("_w")
+    ) * pl.col("group_mean")
     joined = joined.with_columns(
         pl.when(pl.col(value_col).is_null() | (pl.col(denom_col) < min_denom))
         .then(shrunk)

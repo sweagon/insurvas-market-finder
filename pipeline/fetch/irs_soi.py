@@ -31,7 +31,19 @@ from pipeline.fetch.http import Manifest, fetch_bytes
 URL = "https://www.irs.gov/pub/irs-soi/23incyallagi.csv"
 DOC_URL = "https://www.irs.gov/pub/irs-soi/23incydocguide.docx"
 
-KEEP = ["STATEFIPS", "COUNTYFIPS", "COUNTYNAME", "N1", "ELDERLY", "A00100", "A00300", "A00600", "A01400", "A01700", "A02500"]
+KEEP = [
+    "STATEFIPS",
+    "COUNTYFIPS",
+    "COUNTYNAME",
+    "N1",
+    "ELDERLY",
+    "A00100",
+    "A00300",
+    "A00600",
+    "A01400",
+    "A01700",
+    "A02500",
+]
 
 
 def fetch_irs(manifest: Manifest) -> pl.DataFrame:
@@ -41,14 +53,23 @@ def fetch_irs(manifest: Manifest) -> pl.DataFrame:
     inv_ret_income, inv_ret_income_per_return, agi_per_return, ss_income_per_return.
     """
     result = fetch_bytes(URL, suffix=".csv")
-    manifest.record("irs_county_ty2023", result.manifest_entry(vintage="TY2023", source="irs", geography="county"))
+    manifest.record(
+        "irs_county_ty2023",
+        result.manifest_entry(vintage="TY2023", source="irs", geography="county"),
+    )
     doc = fetch_bytes(DOC_URL, suffix=".docx")
-    manifest.record("irs_field_layout_ty2023", doc.manifest_entry(vintage="TY2023", source="irs", kind="documentation"))
+    manifest.record(
+        "irs_field_layout_ty2023",
+        doc.manifest_entry(vintage="TY2023", source="irs", kind="documentation"),
+    )
 
     assert result.path is not None
     df = pl.read_csv(result.path, infer_schema_length=5000)
     df = df.with_columns(
-        fips=(pl.col("STATEFIPS").cast(pl.Utf8).str.zfill(2) + pl.col("COUNTYFIPS").cast(pl.Utf8).str.zfill(3)),
+        fips=(
+            pl.col("STATEFIPS").cast(pl.Utf8).str.zfill(2)
+            + pl.col("COUNTYFIPS").cast(pl.Utf8).str.zfill(3)
+        ),
     )
     # The all-AGI file is already aggregated across AGI stubs per county.
     agg = df.group_by("fips").agg(
@@ -64,7 +85,8 @@ def fetch_irs(manifest: Manifest) -> pl.DataFrame:
     out = agg.with_columns(
         inv_ret_income=(
             pl.col("interest") + pl.col("dividends") + pl.col("ira") + pl.col("pensions")
-        ) * 1000.0,  # SOI reports money amounts in thousands of dollars
+        )
+        * 1000.0,  # SOI reports money amounts in thousands of dollars
     ).with_columns(
         inv_ret_income_per_return=pl.when(pl.col("returns") > 0)
         .then(pl.col("inv_ret_income") / pl.col("returns"))

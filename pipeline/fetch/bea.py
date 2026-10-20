@@ -26,16 +26,20 @@ LATEST_YEAR = "2024"
 def fetch_bea(manifest: Manifest) -> pl.DataFrame:
     """Return one row per county: fips, dir_total (dollars in latest year)."""
     result = fetch_bytes(URL, suffix=".zip")
-    manifest.record("bea_cainc4", result.manifest_entry(vintage="2024", source="bea", geography="county"))
+    manifest.record(
+        "bea_cainc4", result.manifest_entry(vintage="2024", source="bea", geography="county")
+    )
     assert result.path is not None
-    with zipfile.ZipFile(io.BytesIO(result.path.read_bytes())) as zf:
-        with zf.open("CAINC4__ALL_AREAS_1969_2024.csv") as fh:
-            text = fh.read().decode("latin-1")
-            df = pl.read_csv(
-                io.BytesIO(text.encode("utf-8")),
-                columns=["GeoFIPS", "GeoName", "LineCode", LATEST_YEAR],
-                infer_schema_length=5000,
-            )
+    with (
+        zipfile.ZipFile(io.BytesIO(result.path.read_bytes())) as zf,
+        zf.open("CAINC4__ALL_AREAS_1969_2024.csv") as fh,
+    ):
+        text = fh.read().decode("latin-1")
+        df = pl.read_csv(
+            io.BytesIO(text.encode("utf-8")),
+            columns=["GeoFIPS", "GeoName", "LineCode", LATEST_YEAR],
+            infer_schema_length=5000,
+        )
     df = df.with_columns(
         geofips=pl.col("GeoFIPS").cast(pl.Utf8).str.replace_all('"', "").str.strip_chars(),
         linecode=pl.col("LineCode").cast(pl.Utf8).str.strip_chars(),

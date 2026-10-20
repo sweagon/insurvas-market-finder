@@ -7,7 +7,6 @@ findings (imputed rows, shrunk rows, min/max) are reported for review.
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 
 import numpy as np
@@ -21,8 +20,18 @@ from pipeline.transform.metrics import build_metric_matrix
 
 # rule R7: never used in scoring, filtering or ranking, in any form.
 R7_FORBIDDEN_SUBSTRINGS = [
-    "race", "ethnic", "hispanic", "latino", "origin", "ancestry",
-    "religio", "disab", "black", "white", "asian", "native",
+    "race",
+    "ethnic",
+    "hispanic",
+    "latino",
+    "origin",
+    "ancestry",
+    "religio",
+    "disab",
+    "black",
+    "white",
+    "asian",
+    "native",
 ]
 
 
@@ -67,11 +76,13 @@ def generate() -> str:
         cov = 100.0 * (n - nulls) / n if n else 0.0
         if finite.size:
             w(
-                f"| {m.id} | {m.subscore} | {'yes' if m.id in scored else 'no'} | {nulls} | "
-                f"{cov:.1f}% | {np.nanmin(finite):.4g} | {np.nanmedian(finite):.4g} | {np.nanmax(finite):.4g} |"
+                f"| {m.id} | {m.subscore} | {'yes' if m.id in scored else 'no'} | "
+                f"{nulls} | {cov:.1f}% | {np.nanmin(finite):.4g} | "
+                f"{np.nanmedian(finite):.4g} | {np.nanmax(finite):.4g} |"
             )
         else:
-            w(f"| {m.id} | {m.subscore} | {'yes' if m.id in scored else 'no'} | {nulls} | 0% |  |  |  |")
+            flag = "yes" if m.id in scored else "no"
+            w(f"| {m.id} | {m.subscore} | {flag} | {nulls} | 0% |  |  |  |")
     w("")
 
     # ---- Flags ------------------------------------------------------------
@@ -101,17 +112,25 @@ def generate() -> str:
     w("## Contribution invariant (rule R5)")
     w("")
     pop = df["pop_60plus"].to_numpy()
-    columns = {m.id: df[m.id].to_numpy().astype(float) for m in cfg.scored_metrics if m.id in df.columns}
+    columns = {
+        m.id: df[m.id].to_numpy().astype(float) for m in cfg.scored_metrics if m.id in df.columns
+    }
     max_err = 0.0
     for lens_id in cfg.lenses:
-        res = score_matrix(fips=df["fips"].to_list(), columns=columns, cfg=cfg,
-                           lens_id=lens_id, eligibility_pop=pop)
+        res = score_matrix(
+            fips=df["fips"].to_list(),
+            columns=columns,
+            cfg=cfg,
+            lens_id=lens_id,
+            eligibility_pop=pop,
+        )
         total_from_contrib = np.sum(list(res.contributions.values()), axis=0)
         err = float(np.nanmax(np.abs(total_from_contrib - res.total)))
         max_err = max(max_err, err)
         w(f"- `{lens_id}`: max |sum(contributions) - total| = {err:.3e}")
     w("")
-    w(f"**Invariant {'PASSED' if max_err <= 1e-9 else 'FAILED'}** (tolerance 1e-9, observed {max_err:.3e}).")
+    status = "PASSED" if max_err <= 1e-9 else "FAILED"
+    w(f"**Invariant {status}** (tolerance 1e-9, observed {max_err:.3e}).")
     w("")
 
     # ---- Rule R7 audit ----------------------------------------------------
@@ -131,8 +150,9 @@ def generate() -> str:
     # ---- Top / bottom sanity ---------------------------------------------
     w("## Ranking sanity check (volume lens)")
     w("")
-    res = score_matrix(fips=df["fips"].to_list(), columns=columns, cfg=cfg,
-                       lens_id="volume", eligibility_pop=pop)
+    res = score_matrix(
+        fips=df["fips"].to_list(), columns=columns, cfg=cfg, lens_id="volume", eligibility_pop=pop
+    )
     names = df["ctyname"].to_list()
     states = df["stname"].to_list()
     order = np.argsort(-res.total)

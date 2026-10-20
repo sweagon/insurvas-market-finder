@@ -32,7 +32,12 @@ from pipeline.config import load_config
 
 STALE_AFTER_DAYS = 32
 
-app = FastAPI(title="Insurvas Market Finder", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(
+    title="Insurvas Market Finder",
+    version="0.1.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+)
 
 _build_lock = threading.Lock()
 
@@ -58,11 +63,11 @@ def _all_meta() -> dict[str, str]:
         rows = con.execute("SELECT key, value FROM build_meta").fetchall()
     finally:
         con.close()
-    return {k: v for k, v in rows}
+    return dict(rows)
 
 
 @app.get("/api/health")
-def health() -> dict:
+def health() -> JSONResponse:
     try:
         built_at = _meta("built_at")
     except HTTPException as exc:
@@ -73,12 +78,14 @@ def health() -> dict:
         dt = datetime.fromisoformat(built_at)
         age_days = (datetime.now(UTC) - dt).days
         stale = age_days > STALE_AFTER_DAYS
-    return {
-        "status": "stale" if stale else "ok",
-        "built_at": built_at,
-        "age_days": age_days,
-        "stale_after_days": STALE_AFTER_DAYS,
-    }
+    return JSONResponse(
+        content={
+            "status": "stale" if stale else "ok",
+            "built_at": built_at,
+            "age_days": age_days,
+            "stale_after_days": STALE_AFTER_DAYS,
+        }
+    )
 
 
 @app.get("/api/rankings/all")
@@ -86,7 +93,9 @@ def rankings_all() -> JSONResponse:
     """Full rankings payload for the SPA (same shape as the static snapshot)."""
     snapshot = paths.WEB_PUBLIC_DATA / "rankings.json"
     if not snapshot.exists():
-        raise HTTPException(status_code=503, detail="Rankings snapshot not built. Run `make build`.")
+        raise HTTPException(
+            status_code=503, detail="Rankings snapshot not built. Run `make build`."
+        )
     return JSONResponse(content=json.loads(snapshot.read_text(encoding="utf-8")))
 
 
@@ -100,12 +109,22 @@ def meta() -> dict:
             lid: {"label": lens.label, "description": lens.description, "default": lens.default}
             for lid, lens in cfg.lenses.items()
         },
-        "subscores": {sid: {"label": s.label, "description": s.description} for sid, s in cfg.subscores.items()},
+        "subscores": {
+            sid: {"label": s.label, "description": s.description}
+            for sid, s in cfg.subscores.items()
+        },
         "metrics": [
             {
-                "id": m.id, "label": m.label, "subscore": m.subscore, "unit": m.unit,
-                "direction": m.direction, "scored": m.scored, "modeled": m.modeled,
-                "source": m.source, "vintage": m.vintage, "caveats": m.caveats,
+                "id": m.id,
+                "label": m.label,
+                "subscore": m.subscore,
+                "unit": m.unit,
+                "direction": m.direction,
+                "scored": m.scored,
+                "modeled": m.modeled,
+                "source": m.source,
+                "vintage": m.vintage,
+                "caveats": m.caveats,
             }
             for m in cfg.metrics
         ],
@@ -138,7 +157,7 @@ def rankings(
                s.total, s.p05, s.p95, s.rank, s.eligible,
                s.size, s.affordability, s.need, s.reachability, s.whitespace, s.insurability
         FROM scores s JOIN county c USING (fips)
-        WHERE {' AND '.join(where)}
+        WHERE {" AND ".join(where)}
         ORDER BY s.total DESC
         LIMIT ? OFFSET ?
     """
@@ -146,13 +165,19 @@ def rankings(
     try:
         rows = con.execute(sql, params + [limit, offset]).fetchall()
         cols = [d[0] for d in con.description]
-        total = con.execute(
+        count_row = con.execute(
             f"SELECT COUNT(*) FROM scores s WHERE {' AND '.join(where)}", params
-        ).fetchone()[0]
+        ).fetchone()
+        total = int(count_row[0]) if count_row else 0
     finally:
         con.close()
-    return {"lens": lens, "total": total, "limit": limit, "offset": offset,
-            "results": [dict(zip(cols, r)) for r in rows]}
+    return {
+        "lens": lens,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "results": [dict(zip(cols, r, strict=True)) for r in rows],
+    }
 
 
 @app.get("/api/county/{fips}")
@@ -173,9 +198,11 @@ def county(fips: str) -> dict:
     finally:
         con.close()
     return {
-        "county": dict(zip(id_cols, identity)),
-        "scores": [dict(zip(score_cols, r)) for r in scores_rows],
-        "contributions": [{"lens": l, "metric": m, "contribution": c} for l, m, c in contrib],
+        "county": dict(zip(id_cols, identity, strict=False)),
+        "scores": [dict(zip(score_cols, r, strict=True)) for r in scores_rows],
+        "contributions": [
+            {"lens": lens_id, "metric": m, "contribution": c} for lens_id, m, c in contrib
+        ],
     }
 
 
@@ -202,14 +229,16 @@ def states(lens: str = Query("volume")) -> dict:
         cols = [d[0] for d in con.description]
     finally:
         con.close()
-    return {"lens": lens, "results": [dict(zip(cols, r)) for r in rows]}
+    return {"lens": lens, "results": [dict(zip(cols, r, strict=True)) for r in rows]}
 
 
 @app.post("/api/admin/refresh")
 def refresh(authorization: str = Header(default="")) -> dict:
     token = os.environ.get("INSURVAS_ADMIN_TOKEN", "")
     if not token:
-        raise HTTPException(status_code=503, detail="Refresh disabled: INSURVAS_ADMIN_TOKEN not set")
+        raise HTTPException(
+            status_code=503, detail="Refresh disabled: INSURVAS_ADMIN_TOKEN not set"
+        )
     if authorization != f"Bearer {token}":
         raise HTTPException(status_code=401, detail="Unauthorized")
     if not _build_lock.acquire(blocking=False):
@@ -227,14 +256,57 @@ def refresh(authorization: str = Header(default="")) -> dict:
 
 
 _STATE_FIPS = {
-    "AL": "01", "AK": "02", "AZ": "04", "AR": "05", "CA": "06", "CO": "08", "CT": "09",
-    "DE": "10", "DC": "11", "FL": "12", "GA": "13", "HI": "15", "ID": "16", "IL": "17",
-    "IN": "18", "IA": "19", "KS": "20", "KY": "21", "LA": "22", "ME": "23", "MD": "24",
-    "MA": "25", "MI": "26", "MN": "27", "MS": "28", "MO": "29", "MT": "30", "NE": "31",
-    "NV": "32", "NH": "33", "NJ": "34", "NM": "35", "NY": "36", "NC": "37", "ND": "38",
-    "OH": "39", "OK": "40", "OR": "41", "PA": "42", "RI": "44", "SC": "45", "SD": "46",
-    "TN": "47", "TX": "48", "UT": "49", "VT": "50", "VA": "51", "WA": "53", "WV": "54",
-    "WI": "55", "WY": "56",
+    "AL": "01",
+    "AK": "02",
+    "AZ": "04",
+    "AR": "05",
+    "CA": "06",
+    "CO": "08",
+    "CT": "09",
+    "DE": "10",
+    "DC": "11",
+    "FL": "12",
+    "GA": "13",
+    "HI": "15",
+    "ID": "16",
+    "IL": "17",
+    "IN": "18",
+    "IA": "19",
+    "KS": "20",
+    "KY": "21",
+    "LA": "22",
+    "ME": "23",
+    "MD": "24",
+    "MA": "25",
+    "MI": "26",
+    "MN": "27",
+    "MS": "28",
+    "MO": "29",
+    "MT": "30",
+    "NE": "31",
+    "NV": "32",
+    "NH": "33",
+    "NJ": "34",
+    "NM": "35",
+    "NY": "36",
+    "NC": "37",
+    "ND": "38",
+    "OH": "39",
+    "OK": "40",
+    "OR": "41",
+    "PA": "42",
+    "RI": "44",
+    "SC": "45",
+    "SD": "46",
+    "TN": "47",
+    "TX": "48",
+    "UT": "49",
+    "VT": "50",
+    "VA": "51",
+    "WA": "53",
+    "WV": "54",
+    "WI": "55",
+    "WY": "56",
 }
 
 

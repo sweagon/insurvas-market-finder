@@ -28,7 +28,16 @@ from pipeline.score.monte_carlo import monte_carlo_total
 from pipeline.score.reference import score_matrix
 from pipeline.transform.metrics import build_metric_matrix
 
-IDENTITY_COLS = ["fips", "stname", "stusps", "ctyname", "total_pop", "pop_60plus", "share_60plus", "growth_60plus"]
+IDENTITY_COLS = [
+    "fips",
+    "stname",
+    "stusps",
+    "ctyname",
+    "total_pop",
+    "pop_60plus",
+    "share_60plus",
+    "growth_60plus",
+]
 
 
 def _config_hash(cfg) -> str:
@@ -64,11 +73,17 @@ def build(*, mc_draws: int | None = None) -> dict:
         # Full uncertainty budget for the default (headline) lens; cheaper bands
         # for the secondary lenses keep the build under a couple of minutes.
         lens_draws = mc_draws or (
-            cfg.params.monte_carlo_draws if lens_id == cfg.default_lens_id else max(75, cfg.params.monte_carlo_draws // 5)
+            cfg.params.monte_carlo_draws
+            if lens_id == cfg.default_lens_id
+            else max(75, cfg.params.monte_carlo_draws // 5)
         )
         band = monte_carlo_total(
-            fips=fips, columns=columns, cfg=cfg, lens_id=lens_id,
-            eligibility_pop=pop, draws=lens_draws,
+            fips=fips,
+            columns=columns,
+            cfg=cfg,
+            lens_id=lens_id,
+            eligibility_pop=pop,
+            draws=lens_draws,
         )
         total = res.total
         # Rank 1 = best, only among eligible counties.
@@ -87,17 +102,24 @@ def build(*, mc_draws: int | None = None) -> dict:
         lens_scores[lens_id] = pl.DataFrame(sub)
 
         for i, f in enumerate(fips):
-            score_rows.append({
-                "lens": lens_id, "fips": f,
-                "total": float(total[i]),
-                "p05": float(band["p05"][i]), "p50": float(band["p50"][i]), "p95": float(band["p95"][i]),
-                "rank": int(rank[i]) if res.eligibility[i] else None,
-                "eligible": bool(res.eligibility[i]),
-                **{s: float(res.subscores[s][i]) for s in cfg.sub_score_ids()},
-            })
+            score_rows.append(
+                {
+                    "lens": lens_id,
+                    "fips": f,
+                    "total": float(total[i]),
+                    "p05": float(band["p05"][i]),
+                    "p50": float(band["p50"][i]),
+                    "p95": float(band["p95"][i]),
+                    "rank": rank[i] if res.eligibility[i] and rank[i] is not None else None,
+                    "eligible": bool(res.eligibility[i]),
+                    **{s: float(res.subscores[s][i]) for s in cfg.sub_score_ids()},
+                }
+            )
         for mid, arr in res.contributions.items():
             for i, f in enumerate(fips):
-                contrib_rows.append({"lens": lens_id, "fips": f, "metric": mid, "contribution": float(arr[i])})
+                contrib_rows.append(
+                    {"lens": lens_id, "fips": f, "metric": mid, "contribution": float(arr[i])}
+                )
 
     scores_df = pl.DataFrame(score_rows)
     contrib_df = pl.DataFrame(contrib_rows)
@@ -131,29 +153,36 @@ def _ranks(total, eligible) -> list[int | None]:
     return out
 
 
-def _write_duckdb(identity: pl.DataFrame, scores: pl.DataFrame, contrib: pl.DataFrame, meta: dict) -> None:
+def _write_duckdb(
+    identity: pl.DataFrame, scores: pl.DataFrame, contrib: pl.DataFrame, meta: dict
+) -> None:
     tmp = paths.PROCESSED / "duckdb_tmp"
     tmp.mkdir(parents=True, exist_ok=True)
     identity.write_parquet(tmp / "county.parquet")
     scores.write_parquet(tmp / "scores.parquet")
     contrib.write_parquet(tmp / "contributions.parquet")
-    meta_rows = [{"key": k, "value": json.dumps(v) if isinstance(v, (dict, list)) else str(v)} for k, v in meta.items()]
+    meta_rows = [
+        {"key": k, "value": json.dumps(v) if isinstance(v, (dict, list)) else str(v)}
+        for k, v in meta.items()
+    ]
     pl.DataFrame(meta_rows).write_parquet(tmp / "build_meta.parquet")
 
     con = duckdb.connect(str(paths.DB))
     try:
         for name in ("county", "scores", "contributions", "build_meta"):
+            src = tmp / f"{name}.parquet"
             con.execute(
-                f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM read_parquet('{tmp / (name + '.parquet')}')"
+                f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM read_parquet('{src}')"
             )
     finally:
         con.close()
 
 
-def _write_rankings_json(cfg, identity: pl.DataFrame, lens_scores: dict[str, pl.DataFrame], meta: dict) -> None:
-    base = identity.with_columns(stusps=pl.col("fips").str.slice(0, 2))
+def _write_rankings_json(
+    cfg, identity: pl.DataFrame, lens_scores: dict[str, pl.DataFrame], meta: dict
+) -> None:
     records = []
-    lens_frames = {lid: frame for lid, frame in lens_scores.items()}
+    lens_frames = dict(lens_scores)
     for i in range(identity.height):
         fips = identity["fips"][i]
         rec = {
@@ -173,9 +202,14 @@ def _write_rankings_json(cfg, identity: pl.DataFrame, lens_scores: dict[str, pl.
                 "sub": {s: round(float(frame[f"sub_{s}"][i]), 3) for s in cfg.sub_score_ids()},
             }
         records.append(rec)
-    payload = {"meta": meta, "lenses": {
-        lid: {"label": lens.label, "description": lens.description} for lid, lens in cfg.lenses.items()
-    }, "counties": records}
+    payload = {
+        "meta": meta,
+        "lenses": {
+            lid: {"label": lens.label, "description": lens.description}
+            for lid, lens in cfg.lenses.items()
+        },
+        "counties": records,
+    }
     paths.WEB_PUBLIC_DATA.mkdir(parents=True, exist_ok=True)
     (paths.WEB_PUBLIC_DATA / "rankings.json").write_text(
         json.dumps(payload, separators=(",", ":")), encoding="utf-8"

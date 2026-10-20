@@ -72,8 +72,6 @@ def fetch_places(manifest: Manifest) -> pl.DataFrame:
         col = measure.lower()
         if col not in wide.columns:
             wide = wide.with_columns(pl.lit(None, dtype=pl.Float64).alias(col))
-    year_col = (
-        df.group_by("fips").agg(pl.col("year").max().alias("places_year"))
-    )
+    year_col = df.group_by("fips").agg(pl.col("year").max().alias("places_year"))
     wide = wide.join(year_col, on="fips", how="left")
     return wide

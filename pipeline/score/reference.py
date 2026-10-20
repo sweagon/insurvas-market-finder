@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from pipeline.config import MetricsConfig, Metric
+from pipeline.config import Metric, MetricsConfig
 
 
 @dataclass
@@ -50,7 +50,9 @@ def winsorize(values: np.ndarray, lower: float, upper: float) -> np.ndarray:
     return out
 
 
-def percentile_rank(values: np.ndarray, direction: str, tiebreak: np.ndarray | None = None) -> np.ndarray:
+def percentile_rank(
+    values: np.ndarray, direction: str, tiebreak: np.ndarray | None = None
+) -> np.ndarray:
     """Average-rank percentile in [0, 1]; NaN stays NaN. Higher is always better.
 
     When winsorisation clips outliers to a common cap they would otherwise share
@@ -78,17 +80,16 @@ def percentile_rank(values: np.ndarray, direction: str, tiebreak: np.ndarray | N
     # Average rank for genuine ties (equal value AND equal tiebreak).
     while i < n:
         j = i
-        while j + 1 < n and sorted_vals[j + 1] == sorted_vals[i] and (
-            sorted_tb is None or sorted_tb[j + 1] == sorted_tb[i]
+        while (
+            j + 1 < n
+            and sorted_vals[j + 1] == sorted_vals[i]
+            and (sorted_tb is None or sorted_tb[j + 1] == sorted_tb[i])
         ):
             j += 1
         avg_rank = (i + j) / 2.0
         ranks[i : j + 1] = avg_rank
         i = j + 1
-    if n == 1:
-        pct = np.array([1.0])
-    else:
-        pct = ranks / (n - 1)
+    pct = np.array([1.0]) if n == 1 else ranks / (n - 1)
     if direction == "lower_is_better":
         pct = 1.0 - pct
     # `ranks` is in sorted order; scatter back to the original positions.
@@ -108,7 +109,9 @@ def transform_metric(values: np.ndarray, metric: Metric, cfg: MetricsConfig) -> 
     return percentile_rank(wins, metric.direction, tiebreak=transformed)
 
 
-def metric_percentiles(df_columns: dict[str, np.ndarray], cfg: MetricsConfig) -> dict[str, np.ndarray]:
+def metric_percentiles(
+    df_columns: dict[str, np.ndarray], cfg: MetricsConfig
+) -> dict[str, np.ndarray]:
     """Return {metric_id: percentile rank} for every scored metric."""
     out: dict[str, np.ndarray] = {}
     for metric in cfg.scored_metrics:

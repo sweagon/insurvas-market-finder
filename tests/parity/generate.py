@@ -46,8 +46,13 @@ def generate() -> None:
 
     expected: dict[str, dict[str, list[float]]] = {}
     for lens_id in cfg.lenses:
-        res = score_matrix(fips=fips, columns={k: np.array(v) for k, v in columns.items()},
-                           cfg=cfg, lens_id=lens_id, eligibility_pop=np.array(pop))
+        res = score_matrix(
+            fips=fips,
+            columns={k: np.array(v) for k, v in columns.items()},
+            cfg=cfg,
+            lens_id=lens_id,
+            eligibility_pop=np.array(pop),
+        )
         expected[lens_id] = {
             "total": [float(x) for x in res.total],
             "subscores": {s: [float(x) for x in arr] for s, arr in res.subscores.items()},

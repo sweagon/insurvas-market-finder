@@ -35,13 +35,11 @@ def moe_proportion(
     denominator_moe: float | None,
 ) -> float | None:
     """MOE of a proportion X/Y, with the documented ratio fallback."""
-    if None in (estimate, numerator_moe, denominator, denominator_moe):
+    if estimate is None or numerator_moe is None or denominator is None or denominator_moe is None:
         return None
     if denominator == 0:
         return None
-    assert numerator_moe is not None and denominator_moe is not None
     radicand = numerator_moe**2 - (estimate**2) * (denominator_moe**2)
-    assert estimate is not None and denominator is not None
     if radicand >= 0:
         return math.sqrt(radicand) / denominator
     # Fallback: ratio formula (when the proportion formula goes negative).
@@ -55,11 +53,10 @@ def moe_ratio(
     denominator_moe: float | None,
 ) -> float | None:
     """MOE of a ratio X/Y."""
-    if None in (ratio, numerator_moe, denominator, denominator_moe):
+    if ratio is None or numerator_moe is None or denominator is None or denominator_moe is None:
         return None
     if denominator == 0:
         return None
-    assert ratio is not None and numerator_moe is not None and denominator_moe is not None
     return math.sqrt(numerator_moe**2 + (ratio**2) * (denominator_moe**2)) / denominator
 
 

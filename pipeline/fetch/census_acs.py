@@ -28,14 +28,23 @@ import polars as pl
 from pipeline.fetch.http import FetchResult, Manifest, fetch_bytes
 
 YEAR = 2024
-BASE = f"https://www2.census.gov/programs-surveys/acs/summary_file/{YEAR}/table-based-SF/data/5YRData"
+BASE = (
+    f"https://www2.census.gov/programs-surveys/acs/summary_file/{YEAR}/table-based-SF/data/5YRData"
+)
 COUNTY_GEO_PREFIX = "0500000US"
 
 # Tables we need, with the variables we keep and a human note for the manifest.
 TABLES: dict[str, tuple[str, ...]] = {
     "b19049": ("B19049_E005", "B19049_M005"),
     "b19037": ("B19037_E053", *(f"B19037_E{i:03d}" for i in range(54, 70))),
-    "b25027": ("B25027_E007", "B25027_E008", "B25027_E009", "B25027_E015", "B25027_E016", "B25027_E017"),
+    "b25027": (
+        "B25027_E007",
+        "B25027_E008",
+        "B25027_E009",
+        "B25027_E015",
+        "B25027_E016",
+        "B25027_E017",
+    ),
     "b25077": ("B25077_E001", "B25077_M001"),
     "b28005": ("B28005_E014", "B28005_E017", "B28005_E018"),
     "b09021": ("B09021_E022", "B09021_E024"),
@@ -99,10 +108,13 @@ def fetch_acs(manifest: Manifest, *, include_pr: bool = False) -> pl.DataFrame:
             value_name="raw",
         )
         parsed = long.with_columns(
-            pl.col("raw").cast(pl.Utf8).map_elements(
+            pl.col("raw")
+            .cast(pl.Utf8)
+            .map_elements(
                 lambda x: _parse_struct(x if x is not None else ""),
                 return_dtype=pl.Struct({"value": pl.Float64, "reason_code": pl.Utf8}),
-            ).alias("parsed")
+            )
+            .alias("parsed")
         ).unnest("parsed")
         parsed = parsed.select("fips", "variable", "value", "reason_code")
         if not include_pr:

@@ -19,9 +19,7 @@ CONFIG_PATH = ROOT / "config" / "metrics.yaml"
 Direction = Literal["higher_is_better", "lower_is_better"]
 Transform = Literal["none", "log", "winsor_log"]
 MoeMethod = Literal["none", "acs_api", "derived_prop", "derived_ratio"]
-SubScoreId = Literal[
-    "size", "affordability", "need", "reachability", "whitespace", "insurability"
-]
+SubScoreId = Literal["size", "affordability", "need", "reachability", "whitespace", "insurability"]
 LensId = Literal["volume", "balanced", "final_expense", "legacy_wealth", "spouse_protection"]
 
 
@@ -133,7 +131,7 @@ class _Raw(BaseModel):
     subscores: dict[str, SubScore]
     lenses: dict[str, Lens]
     metrics: list[Metric]
-    rule_R7: str = ""
+    rule_R7: str = ""  # noqa: N815 - matches the config key
 
 
 class MetricsConfig(_Raw):
