@@ -1,0 +1,324 @@
+{
+  "version": 3,
+  "params": {
+    "winsor_lower": 0.01,
+    "winsor_upper": 0.99,
+    "eligibility_min_60plus": 2000
+  },
+  "default_lens": "volume",
+  "subscores": [
+    "size",
+    "affordability",
+    "need",
+    "reachability",
+    "whitespace",
+    "insurability"
+  ],
+  "lenses": {
+    "volume": {
+      "label": "Volume",
+      "description": "Biggest 60+ pools - where the most potential customers live",
+      "weights": {
+        "size": 40.0,
+        "affordability": 20.0,
+        "need": 12.0,
+        "reachability": 12.0,
+        "whitespace": 10.0,
+        "insurability": 6.0
+      },
+      "flip_insurance_sign": false
+    },
+    "balanced": {
+      "label": "Balanced",
+      "description": "Equal-footing trade-off across all six sub-scores",
+      "weights": {
+        "size": 30.0,
+        "affordability": 25.0,
+        "need": 15.0,
+        "reachability": 15.0,
+        "whitespace": 10.0,
+        "insurability": 5.0
+      },
+      "flip_insurance_sign": false
+    },
+    "final_expense": {
+      "label": "Final Expense / Guaranteed Issue",
+      "description": "Deep need + ability to pay; higher area disease burden is neutral-to-positive (no underwriting)",
+      "weights": {
+        "size": 25.0,
+        "affordability": 30.0,
+        "need": 18.0,
+        "reachability": 12.0,
+        "whitespace": 8.0,
+        "insurability": 7.0
+      },
+      "flip_insurance_sign": true
+    },
+    "legacy_wealth": {
+      "label": "Legacy / Wealth",
+      "description": "Affluent 65+ households with capacity for permanent life and estate planning",
+      "weights": {
+        "size": 20.0,
+        "affordability": 35.0,
+        "need": 10.0,
+        "reachability": 10.0,
+        "whitespace": 15.0,
+        "insurability": 10.0
+      },
+      "flip_insurance_sign": false
+    },
+    "spouse_protection": {
+      "label": "Spouse / Mortgage Protection",
+      "description": "Couples with dependents and remaining housing obligations",
+      "weights": {
+        "size": 22.0,
+        "affordability": 20.0,
+        "need": 30.0,
+        "reachability": 13.0,
+        "whitespace": 10.0,
+        "insurability": 5.0
+      },
+      "flip_insurance_sign": false
+    }
+  },
+  "metrics": [
+    {
+      "id": "pop_60plus",
+      "subscore": "size",
+      "direction": "higher_is_better",
+      "transform": "log",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.6,
+        "balanced": 0.45,
+        "final_expense": 0.55,
+        "legacy_wealth": 0.55,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "share_60plus",
+      "subscore": "size",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.2,
+        "balanced": 0.25,
+        "final_expense": 0.2,
+        "legacy_wealth": 0.15,
+        "spouse_protection": 0.2
+      }
+    },
+    {
+      "id": "growth_60plus",
+      "subscore": "size",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.2,
+        "balanced": 0.3,
+        "final_expense": 0.25,
+        "legacy_wealth": 0.3,
+        "spouse_protection": 0.3
+      }
+    },
+    {
+      "id": "income_65plus_median",
+      "subscore": "affordability",
+      "direction": "higher_is_better",
+      "transform": "log",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.3,
+        "balanced": 0.3,
+        "final_expense": 0.25,
+        "legacy_wealth": 0.35,
+        "spouse_protection": 0.25
+      }
+    },
+    {
+      "id": "share_65_hh_75k",
+      "subscore": "affordability",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.25,
+        "balanced": 0.25,
+        "final_expense": 0.3,
+        "legacy_wealth": 0.35,
+        "spouse_protection": 0.25
+      }
+    },
+    {
+      "id": "irs_investment_income_per_return",
+      "subscore": "affordability",
+      "direction": "higher_is_better",
+      "transform": "log",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.25,
+        "balanced": 0.2,
+        "final_expense": 0.15,
+        "legacy_wealth": 0.2,
+        "spouse_protection": 0.2
+      }
+    },
+    {
+      "id": "home_equity_65",
+      "subscore": "affordability",
+      "direction": "higher_is_better",
+      "transform": "log",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.2,
+        "balanced": 0.25,
+        "final_expense": 0.3,
+        "legacy_wealth": 0.1,
+        "spouse_protection": 0.3
+      }
+    },
+    {
+      "id": "spouse_share_60plus",
+      "subscore": "need",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.5,
+        "balanced": 0.45,
+        "final_expense": 0.35,
+        "legacy_wealth": 0.4,
+        "spouse_protection": 0.65
+      }
+    },
+    {
+      "id": "mortgage_share_65_owners",
+      "subscore": "need",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.5,
+        "balanced": 0.55,
+        "final_expense": 0.65,
+        "legacy_wealth": 0.6,
+        "spouse_protection": 0.35
+      }
+    },
+    {
+      "id": "internet_65plus",
+      "subscore": "reachability",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.55,
+        "balanced": 0.5,
+        "final_expense": 0.45,
+        "legacy_wealth": 0.45,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "density_60plus",
+      "subscore": "reachability",
+      "direction": "higher_is_better",
+      "transform": "log",
+      "scored": true,
+      "lens_weights": {
+        "volume": 0.45,
+        "balanced": 0.5,
+        "final_expense": 0.55,
+        "legacy_wealth": 0.55,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "agencies_per_1000_60plus",
+      "subscore": "whitespace",
+      "direction": "lower_is_better",
+      "transform": "log",
+      "scored": true,
+      "lens_weights": {
+        "volume": 1.0,
+        "balanced": 1.0,
+        "final_expense": 1.0,
+        "legacy_wealth": 1.0,
+        "spouse_protection": 1.0
+      }
+    },
+    {
+      "id": "chronic_burden_composite",
+      "subscore": "insurability",
+      "direction": "lower_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 1.0,
+        "balanced": 1.0,
+        "final_expense": 1.0,
+        "legacy_wealth": 1.0,
+        "spouse_protection": 1.0
+      }
+    },
+    {
+      "id": "risk_behaviour_composite",
+      "subscore": "insurability",
+      "direction": "lower_is_better",
+      "transform": "none",
+      "scored": true,
+      "lens_weights": {
+        "volume": 1.0,
+        "balanced": 1.0,
+        "final_expense": 1.0,
+        "legacy_wealth": 1.0,
+        "spouse_protection": 1.0
+      }
+    },
+    {
+      "id": "expected_ownership_65",
+      "subscore": "size",
+      "direction": "higher_is_better",
+      "transform": "none",
+      "scored": false,
+      "lens_weights": {
+        "volume": 0.0,
+        "balanced": 0.0,
+        "final_expense": 0.0,
+        "legacy_wealth": 0.0,
+        "spouse_protection": 0.0
+      }
+    },
+    {
+      "id": "coverage_gap_households_60",
+      "subscore": "size",
+      "direction": "higher_is_better",
+      "transform": "log",
+      "scored": false,
+      "lens_weights": {
+        "volume": 0.0,
+        "balanced": 0.0,
+        "final_expense": 0.0,
+        "legacy_wealth": 0.0,
+        "spouse_protection": 0.0
+      }
+    },
+    {
+      "id": "area_health_context",
+      "subscore": "insurability",
+      "direction": "lower_is_better",
+      "transform": "none",
+      "scored": false,
+      "lens_weights": {
+        "volume": 0.0,
+        "balanced": 0.0,
+        "final_expense": 0.0,
+        "legacy_wealth": 0.0,
+        "spouse_protection": 0.0
+      }
+    }
+  ]
+}
