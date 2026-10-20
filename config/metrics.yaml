@@ -1,0 +1,403 @@
+# =====================================================================
+# config/metrics.yaml - SINGLE SOURCE OF TRUTH
+# Every metric used by the pipeline, the scorer, the API, the UI and the
+# docs is declared here (rule R3). No metric may exist in code without an
+# entry in this file.
+#
+# Fields per metric
+#   id              stable identifier (used in API, DB, TS port, tests)
+#   label           human label for UI/docs
+#   subscore        one of the six sub-scores
+#   source          key into `sources` (must also appear in data/manifest.json)
+#   table_field     source table / field / variable ids, for lineage only
+#   vintage         data vintage string shown in the UI
+#   unit            display unit
+#   direction       higher_is_better | lower_is_better
+#   transform       none | log | winsor_log  (all are percentile-ranked after)
+#   moe             none | acs_api | derived_prop | derived_ratio
+#   lens_weights    per-lens weight (0 = metric not scored in that lens)
+#   caveats         honesty strings shown in the UI
+#   scored          true for metrics that enter a score; false for context
+# =====================================================================
+
+version: 3
+
+params:
+  target_age_min: 60          # size framing (population estimates)
+  econ_age_min: 65            # economic profiling uses 65+ householder tables
+  eligibility_min_60plus: 2000
+  winsor_lower: 0.01
+  winsor_upper: 0.99
+  monte_carlo_draws: 500
+  monte_carlo_moe_confidence: 0.90   # ACS MOEs are 90% CI
+  shrinkage: empirical_bayes
+
+vintages:
+  acs: "2020-2024"            # ACS 5-year, latest county-complete (released 2026-01-29)
+  popest: 2025                # Vintage 2025 county estimates (released 2026-06-25)
+  irs: 2023                   # SOI county, tax year 2023
+  cbp: 2023                   # County Business Patterns
+  places: 2025                # PLACES 2025 release (BRFSS 2023/2022)
+  bea: 2024                   # CAINC4 regional income (verify in fetch)
+  gazetteer: 2024
+
+geography:
+  include_pr: false           # PR supported but excluded by default
+  fips_length: 5
+  ct_geo: planning_regions    # ACS/PEP 2022+ use 9 CT planning regions
+
+sources:
+  popest:
+    name: "Census Population Estimates Vintage 2025"
+    url: "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/asrh/"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Census Bureau, Population Estimates Program"
+  acs:
+    name: "American Community Survey 2020-2024 5-year"
+    url: "https://api.census.gov/data/2024/acs/acs5"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Census Bureau, American Community Survey"
+  gazetteer:
+    name: "Census Gazetteer 2024 counties"
+    url: "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_Gaz_counties_national.zip"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Census Bureau"
+  cb:
+    name: "Census cartographic boundary files 2024"
+    url: "https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_county_5m.zip"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Census Bureau cartographic boundary files"
+  irs:
+    name: "IRS SOI county income data, tax year 2023"
+    url: "https://www.irs.gov/pub/irs-soi/23incyallagi.csv"
+    license: "Public domain (US Government work)"
+    attribution: "Internal Revenue Service, Statistics of Income"
+    caveats: "ZIP-based county assignment; fewer than 20 returns suppressed; top AGI bracket is $200k+"
+  cbp:
+    name: "County Business Patterns 2023"
+    url: "https://www2.census.gov/programs-surveys/cbp/datasets/2023/cbp23co.zip"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Census Bureau, County Business Patterns"
+    caveats: "Excludes most self-employed; see Nonemployer Statistics for independent agents"
+  places:
+    name: "CDC PLACES 2025 release, county data"
+    url: "https://data.cdc.gov/resource/swc5-untb.json"
+    license: "Public domain (US Government work)"
+    attribution: "Centers for Disease Control and Prevention, PLACES; funded in part by RWJF"
+    caveats: "Model-based estimates for all adults 18+, not seniors specifically; release year != data year"
+  bea:
+    name: "BEA CAINC4 county personal income"
+    url: "https://apps.bea.gov/regional/zip/CAINC4.zip"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Bureau of Economic Analysis"
+
+# National priors (not local). Documented as priors, never as observed local truth.
+priors:
+  limra_barometer_2026:
+    attribution: "Source: 2026 Insurance Barometer Study, LIMRA and Life Happens"
+    note: "Survey covers adults 18-75; ownership by income band used for synthetic estimation"
+    overall_ownership: 0.52
+    under_50k: 0.29
+    at_150k_plus: 0.64
+  scf_2025:
+    attribution: "Federal Reserve, 2025 Survey of Consumer Finances"
+    note: "Used as the older-age ownership prior; released 2026-10-09"
+
+subscores:
+  size:
+    label: Size of the senior market
+    description: "How many 60+ residents and how fast the pool is growing"
+  affordability:
+    label: Ability to pay
+    description: "Income, wealth composition and housing equity of 65+ households"
+  need:
+    label: Need for coverage
+    description: "Life-stage signals: spouse present, mortgage still on the home"
+  reachability:
+    label: Reachability
+    description: "Whether the pool can be reached efficiently through any channel"
+  whitespace:
+    label: Whitespace (inverse competition)
+    description: "Insurance agency density per 1,000 residents aged 60+, inverted"
+  insurability:
+    label: Insurability context
+    description: "Area-level chronic-condition burden (adults 18+); not individual eligibility"
+
+# Lenses are weight presets. Every weight is a documented prior, not a truth.
+# Volume is the default view per stakeholder decision (biggest pools first).
+lenses:
+  volume:
+    label: Volume
+    description: "Biggest 60+ pools - where the most potential customers live"
+    default: true
+    weights: {size: 40, affordability: 20, need: 12, reachability: 12, whitespace: 10, insurability: 6}
+  balanced:
+    label: Balanced
+    description: "Equal-footing trade-off across all six sub-scores"
+    weights: {size: 30, affordability: 25, need: 15, reachability: 15, whitespace: 10, insurability: 5}
+  final_expense:
+    label: Final Expense / Guaranteed Issue
+    description: "Deep need + ability to pay; higher area disease burden is neutral-to-positive (no underwriting)"
+    weights: {size: 25, affordability: 30, need: 18, reachability: 12, whitespace: 8, insurability: 7}
+    flip_insurance_sign: true
+  legacy_wealth:
+    label: Legacy / Wealth
+    description: "Affluent 65+ households with capacity for permanent life and estate planning"
+    weights: {size: 20, affordability: 35, need: 10, reachability: 10, whitespace: 15, insurability: 10}
+  spouse_protection:
+    label: Spouse / Mortgage Protection
+    description: "Couples with dependents and remaining housing obligations"
+    weights: {size: 22, affordability: 20, need: 30, reachability: 13, whitespace: 10, insurability: 5}
+
+metrics:
+  # ---------------- SIZE ----------------
+  - id: pop_60plus
+    label: Residents aged 60+
+    subscore: size
+    source: popest
+    table_field: "cc-est2025-syasex: single-year-of-age, sum(60+)"
+    vintage: "2025"
+    unit: people
+    direction: higher_is_better
+    transform: log
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.60, balanced: 0.45, final_expense: 0.55, legacy_wealth: 0.55, spouse_protection: 0.50}
+    caveats: "Point estimates from the Vintage 2025 postcensal series; no MOE published."
+
+  - id: share_60plus
+    label: Share of residents aged 60+
+    subscore: size
+    source: popest
+    table_field: "cc-est2025-agesex: AGE6064 + AGE6569 + AGE7074 + AGE7579 + AGE8084 + AGE85PLUS / POPESTIMATE"
+    vintage: "2025"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.20, balanced: 0.25, final_expense: 0.20, legacy_wealth: 0.15, spouse_protection: 0.20}
+    caveats: "Age structure only; says nothing about wealth."
+
+  - id: growth_60plus
+    label: Growth of 60+ population, 2020 to 2025
+    subscore: size
+    source: popest
+    table_field: "cc-est2025-syasex: (pop60+_2025 / pop60+_2020) - 1"
+    vintage: "2020-2025"
+    unit: percent
+    direction: higher_is_better
+    transform: none
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.20, balanced: 0.30, final_expense: 0.25, legacy_wealth: 0.30, spouse_protection: 0.30}
+    caveats: "Migration and aging-in both contribute; not decomposable."
+
+  # ---------------- AFFORDABILITY ----------------
+  - id: income_65plus_median
+    label: Median household income, householder 65+
+    subscore: affordability
+    source: acs
+    table_field: "B19049_005E (estimate), B19049_005M (MOE)"
+    vintage: "2020-2024"
+    unit: usd
+    direction: higher_is_better
+    transform: log
+    moe: acs_api
+    scored: true
+    lens_weights: {volume: 0.30, balanced: 0.30, final_expense: 0.25, legacy_wealth: 0.35, spouse_protection: 0.25}
+    caveats: "5-year pooled estimate; household income, not personal."
+
+  - id: share_65_hh_75k
+    label: Share of 65+ households with income $75k+
+    subscore: affordability
+    source: acs
+    table_field: "B19037 age-of-householder x income; sum of 65+ bands with income >= 75,000 / 65+ total"
+    vintage: "2020-2024"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: derived_prop
+    scored: true
+    lens_weights: {volume: 0.25, balanced: 0.25, final_expense: 0.30, legacy_wealth: 0.35, spouse_protection: 0.25}
+    caveats: "Income is for the whole household; a 65+ householder may live with working-age adults."
+
+  - id: irs_investment_income_per_return
+    label: Interest, dividend, IRA and pension income per tax return
+    subscore: affordability
+    source: irs
+    table_field: "A00300 (interest) + A00600 (dividends) + A00800 (IRA) + A01000 (pensions) / N00100"
+    vintage: "TY2023"
+    unit: usd
+    direction: higher_is_better
+    transform: log
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.25, balanced: 0.20, final_expense: 0.15, legacy_wealth: 0.20, spouse_protection: 0.20}
+    caveats: "ZIP-based county assignment; suppressed below 20 returns; not age-restricted."
+
+  - id: home_equity_65
+    label: Housing equity proxy for 65+ owners (mortgage-free value)
+    subscore: affordability
+    source: acs
+    table_field: "B25007 (65+ owner-occupied without mortgage share) x B25077 (median home value)"
+    vintage: "2020-2024"
+    unit: usd
+    direction: higher_is_better
+    transform: log
+    moe: derived_ratio
+    scored: true
+    lens_weights: {volume: 0.20, balanced: 0.25, final_expense: 0.30, legacy_wealth: 0.10, spouse_protection: 0.30}
+    caveats: "Ecological proxy: median value times a county share; not a household-level estimate."
+
+  # ---------------- NEED ----------------
+  - id: spouse_share_60plus
+    label: Share of 60+ adults living with a spouse
+    subscore: need
+    source: acs
+    table_field: "B09021 living arrangements, 60+ spouse-present rows / 60+ total"
+    vintage: "2020-2024"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: derived_prop
+    scored: true
+    lens_weights: {volume: 0.50, balanced: 0.45, final_expense: 0.35, legacy_wealth: 0.40, spouse_protection: 0.65}
+    caveats: "Marital status is not a proxy for dependents; interpret as household coupling."
+
+  - id: mortgage_share_65_owners
+    label: Share of 65+ owners still paying a mortgage
+    subscore: need
+    source: acs
+    table_field: "B25007: 65+ owner-occupied with mortgage / 65+ owner-occupied total"
+    vintage: "2020-2024"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: derived_prop
+    scored: true
+    lens_weights: {volume: 0.50, balanced: 0.55, final_expense: 0.65, legacy_wealth: 0.60, spouse_protection: 0.35}
+    caveats: "A remaining mortgage is a coverage need signal, not a financial-stress measure."
+
+  # ---------------- REACHABILITY ----------------
+  - id: internet_65plus
+    label: Share of 65+ households with internet subscription
+    subscore: reachability
+    source: acs
+    table_field: "B28005 age x internet subscription; 65+ with subscription / 65+ total"
+    vintage: "2020-2024"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: derived_prop
+    scored: true
+    lens_weights: {volume: 0.55, balanced: 0.50, final_expense: 0.45, legacy_wealth: 0.45, spouse_protection: 0.50}
+    caveats: "Digital reach proxy; direct mail and field channels are unaffected."
+
+  - id: density_60plus
+    label: Residents aged 60+ per square mile
+    subscore: reachability
+    source: popest
+    table_field: "pop_60plus / ALAND (Census Gazetteer land area)"
+    vintage: "2025"
+    unit: density
+    direction: higher_is_better
+    transform: log
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.45, balanced: 0.50, final_expense: 0.55, legacy_wealth: 0.55, spouse_protection: 0.50}
+    caveats: "Density favours compact metro markets; it is not a media-cost measure."
+
+  # ---------------- WHITESPACE ----------------
+  - id: agencies_per_1000_60plus
+    label: Insurance agencies per 1,000 residents aged 60+
+    subscore: whitespace
+    source: cbp
+    table_field: "cbp23co NAICS 524210 ESTAB / pop_60plus * 1000"
+    vintage: "2023"
+    unit: rate
+    direction: lower_is_better
+    transform: log
+    moe: none
+    scored: true
+    lens_weights: {volume: 1.0, balanced: 1.0, final_expense: 1.0, legacy_wealth: 1.0, spouse_protection: 1.0}
+    caveats: "CBP excludes most self-employed agents; understates competition in independent-agent states."
+
+  # ---------------- INSURABILITY ----------------
+  - id: chronic_burden_composite
+    label: Chronic-condition burden (adults 18+)
+    subscore: insurability
+    source: places
+    table_field: "PLACES crude prevalence: CHD, DIABETES, BPHIGH, CANCER, COPD; mean z-score"
+    vintage: "2025"
+    unit: index
+    direction: lower_is_better
+    transform: none
+    moe: none
+    scored: true
+    lens_weights: {volume: 1.0, balanced: 1.0, final_expense: 1.0, legacy_wealth: 1.0, spouse_protection: 1.0}
+    caveats: "Area health context for adults 18+, not seniors and not individuals. Never use for individual eligibility."
+
+  - id: risk_behaviour_composite
+    label: Risk-behaviour burden (adults 18+)
+    subscore: insurability
+    source: places
+    table_field: "PLACES crude prevalence: OBESITY, SMOKING, LPA (no leisure-time activity); mean z-score"
+    vintage: "2025"
+    unit: index
+    direction: lower_is_better
+    transform: none
+    moe: none
+    scored: true
+    lens_weights: {volume: 1.0, balanced: 1.0, final_expense: 1.0, legacy_wealth: 1.0, spouse_protection: 1.0}
+    caveats: "Modifiable area-level behaviours; correlated with income, which is already scored."
+
+  # ------- CONTEXT / MODELED PRIORS (not scored) -------
+  - id: expected_ownership_65
+    label: Expected life-insurance ownership among 65+ households
+    subscore: size
+    source: acs
+    table_field: "B19037 income distribution x priors.limra_barometer_2026 band rates"
+    vintage: "2020-2024"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: none
+    scored: false
+    modeled: true
+    lens_weights: {}
+    caveats: "MODELED PRIOR, NOT OBSERVED. National survey rates applied to local income bands."
+
+  - id: coverage_gap_households_60
+    label: Coverage-gap households aged 60+
+    subscore: size
+    source: acs
+    table_field: "households with 65+ householder x (1 - expected_ownership_65)"
+    vintage: "2020-2024"
+    unit: households
+    direction: higher_is_better
+    transform: log
+    moe: none
+    scored: false
+    modeled: true
+    lens_weights: {}
+    caveats: "MODELED PRIOR, NOT OBSERVED."
+
+  - id: area_health_context
+    label: Area health context (premature death / poor health)
+    subscore: insurability
+    source: places
+    table_field: "PLACES MHLTH, PHYSINACT crude prevalence"
+    vintage: "2025"
+    unit: share
+    direction: lower_is_better
+    transform: none
+    moe: none
+    scored: false
+    lens_weights: {}
+    caveats: "Shown for context only; never used in scoring or filtering."
+
+rule_R7: >
+  This tool NEVER uses race, ethnicity, national origin, religion or disability
+  status in scoring or filtering. Protected-class variables are not present in
+  config/metrics.yaml and must never be added. See docs/METHODOLOGY.md.
