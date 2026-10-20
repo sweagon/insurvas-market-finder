@@ -12,6 +12,8 @@ CACHE = DATA / "cache"
 PROCESSED = DATA / "processed"
 MANIFEST = DATA / "manifest.json"
 QA_REPORT = DATA / "qa_report.md"
+DB = DATA / "market.duckdb"
+BUILD_META = DATA / "build.json"
 
 CONFIG = ROOT / "config"
 METRICS_YAML = CONFIG / "metrics.yaml"

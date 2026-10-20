@@ -1,0 +1,25 @@
+{
+  "built_at": "2026-10-20T13:24:42.221328+00:00",
+  "config_version": 3,
+  "config_hash": "82d13eb9a78e86af",
+  "vintages": {
+    "acs": "2020-2024",
+    "popest": 2025,
+    "irs": 2023,
+    "cbp": 2023,
+    "places": 2025,
+    "bea": 2024,
+    "gazetteer": 2024
+  },
+  "counties": 3144,
+  "eligible": 2680,
+  "lenses": [
+    "volume",
+    "balanced",
+    "final_expense",
+    "legacy_wealth",
+    "spouse_protection"
+  ],
+  "mc_draws": 500,
+  "duration_s": 41.5
+}

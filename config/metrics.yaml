@@ -102,6 +102,16 @@ priors:
   scf_2025:
     attribution: "Federal Reserve, 2025 Survey of Consumer Finances"
     note: "Used as the older-age ownership prior; released 2026-10-09"
+  # Coefficient of variation used by the Monte Carlo when a source publishes no
+  # margin of error (POPEST point estimates, CBP establishment counts). These are
+  # documented assumptions, surfaced in the methodology page, not measurements.
+  default_cv: 0.10
+  cv_no_moe:
+    pop_60plus: 0.02
+    share_60plus: 0.02
+    growth_60plus: 0.05
+    density_60plus: 0.03
+    agencies_per_1000_60plus: 0.20
 
 subscores:
   size:
