@@ -1,0 +1,175 @@
+/*
+ * Design tokens (Part B). Components never use raw hex; everything reads a
+ * CSS variable from `:root[data-theme]`. The single accent is forest green
+ * #5D8647 (project override of the source document's ember), re-derived and
+ * contrast-verified. See docs/design/DESIGN_BRIEF.md.
+ */
+
+:root {
+  /* spacing (4px base) */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 40px;
+  --space-10: 48px;
+  --space-11: 64px;
+  --space-12: 80px;
+
+  /* radius ladder */
+  --radius-chip: 6px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --radius-modal: 24px;
+  --radius-pill: 999px;
+
+  /* motion (B.7) */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+  --dur-hero: 600ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* z-index ladder */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-map: 20;
+  --z-panel: 30;
+  --z-drawer: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* dense layout metrics, flipped by the density provider */
+  --row-height: 44px;
+  --control-height: 40px;
+  --card-pad: 20px;
+  --shell-sidebar: 248px;
+  --shell-rail: 72px;
+}
+
+:root[data-density="compact"] {
+  --row-height: 32px;
+  --control-height: 32px;
+  --card-pad: 16px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: #0c0b0a;
+  --bg-surface-1: #141311;
+  --bg-surface-2: #1b1a17;
+  --bg-surface-3: #24221e;
+  --scrim: rgba(12, 11, 10, 0.72);
+  --glass-bg: rgba(20, 19, 17, 0.62);
+  --glass-border: rgba(255, 244, 230, 0.1);
+  --border-subtle: rgba(255, 244, 230, 0.08);
+  --border-default: rgba(255, 244, 230, 0.14);
+  --border-strong: rgba(255, 244, 230, 0.26);
+  --text-primary: #f5f1ea;
+  --text-secondary: #b9b2a7;
+  --text-tertiary: #8a8378;
+  --text-on-accent: #0a0e05;
+  --accent: #5d8647;
+  --accent-text: #8fb872;
+  --accent-hover: #6e9a54;
+  --accent-pressed: #4c7139;
+  --accent-subtle: rgba(93, 134, 71, 0.14);
+  --accent-border: rgba(93, 134, 71, 0.45);
+  --positive: #b6f23a;
+  --positive-subtle: rgba(182, 242, 58, 0.14);
+  --negative: #ff6b6b;
+  --negative-subtle: rgba(255, 107, 107, 0.14);
+  --warning: #ffb020;
+  --warning-subtle: rgba(255, 176, 32, 0.14);
+  --info: #5aa9ff;
+  --info-subtle: rgba(90, 169, 255, 0.14);
+  --focus-ring: #d7e7c4;
+  --grid-line: rgba(255, 244, 230, 0.06);
+  --map-stroke: rgba(12, 11, 10, 0.85);
+  --shadow-l2: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-l3: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-l4: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-canvas: #f2f0ec;
+  --bg-surface-1: #ffffff;
+  --bg-surface-2: #faf8f5;
+  --bg-surface-3: #f0ede8;
+  --scrim: rgba(20, 17, 12, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(20, 17, 12, 0.08);
+  --border-subtle: rgba(20, 17, 12, 0.07);
+  --border-default: rgba(20, 17, 12, 0.13);
+  --border-strong: rgba(20, 17, 12, 0.28);
+  --text-primary: #17140f;
+  --text-secondary: #5c554b;
+  --text-tertiary: #766f64;
+  --text-on-accent: #0a0e05;
+  --accent: #5d8647;
+  --accent-text: #3f6630;
+  --accent-hover: #4e7539;
+  --accent-pressed: #3f6630;
+  --accent-subtle: rgba(93, 134, 71, 0.1);
+  --accent-border: rgba(63, 102, 48, 0.45);
+  --positive: #3f7d0b;
+  --positive-subtle: rgba(63, 125, 11, 0.1);
+  --negative: #c62828;
+  --negative-subtle: rgba(198, 40, 40, 0.1);
+  --warning: #9a6200;
+  --warning-subtle: rgba(154, 98, 0, 0.1);
+  --info: #1f5fbf;
+  --info-subtle: rgba(31, 95, 191, 0.1);
+  --focus-ring: #17140f;
+  --grid-line: rgba(20, 17, 12, 0.06);
+  --map-stroke: rgba(255, 255, 255, 0.9);
+  --shadow-l2: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-l3: 0 12px 32px rgba(20, 17, 12, 0.12);
+  --shadow-l4: 0 24px 64px rgba(20, 17, 12, 0.14);
+}
+
+/* Light theme keeps the dark sidebar from R5 as an option. */
+:root[data-theme="light"][data-sidebar="dark"],
+:root[data-theme="dark"][data-sidebar="dark"] {
+  --sidebar-bg: #141311;
+  --sidebar-text: #f5f1ea;
+  --sidebar-text-secondary: #b9b2a7;
+  --sidebar-border: rgba(255, 244, 230, 0.08);
+  --sidebar-active: #24221e;
+}
+:root[data-sidebar="light"] {
+  --sidebar-bg: var(--bg-surface-1);
+  --sidebar-text: var(--text-primary);
+  --sidebar-text-secondary: var(--text-secondary);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-active: var(--bg-surface-3);
+}
+
+/* Data-visualisation palettes (B.3) */
+:root {
+  --lens-volume: #56b4e9;
+  --lens-balanced: #56b4e9;
+  --lens-final_expense: #e69f00;
+  --lens-legacy_wealth: #cc79a7;
+  --lens-spouse_protection: #009e73;
+  --sub-size: #56b4e9;
+  --sub-affordability: #e69f00;
+  --sub-need: #cc79a7;
+  --sub-reachability: #009e73;
+  --sub-whitespace: #0072b2;
+  --sub-insurability: #f0e442;
+  --hatch-opacity: 0.2;
+}
+:root[data-theme="light"] {
+  --sub-insurability: #b8a800;
+}

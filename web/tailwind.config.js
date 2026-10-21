@@ -1,15 +1,7 @@
+import preset from "./tailwind.preset.js";
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  presets: [preset],
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        ink: "#0b1220",
-      },
-      fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-      },
-    },
-  },
-  plugins: [],
 };
