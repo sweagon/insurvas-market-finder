@@ -80,8 +80,16 @@ export function rank(
   return base;
 }
 
-export function rankRange(p05: number, p95: number): string {
-  return `#${NUM.format(Math.round(p05))}–#${NUM.format(Math.round(p95))}`;
+/**
+ * Monte Carlo score band: "82–85".
+ *
+ * These are percentiles of the **score**, not of the rank, so they are shown
+ * without a "#" prefix. A rank range is a different quantity and must not be
+ * presented as one.
+ */
+export function scoreRange(p05: number | null | undefined, p95: number | null | undefined): string {
+  if (p05 == null || p95 == null) return "—";
+  return `${NUM.format(Math.round(p05))}–${NUM.format(Math.round(p95))}`;
 }
 
 /** Vintage with an en dash for ranges: ACS 2020–2024 */

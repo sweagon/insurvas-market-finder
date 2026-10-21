@@ -1,6 +1,6 @@
 # Data QA report
 
-Generated: 2026-10-21T03:28:17.218536+00:00
+Generated: 2026-10-21T23:39:09.243782+00:00
 Config version: 3  |  Counties: 3144
 
 ## Metric coverage
@@ -20,7 +20,7 @@ Config version: 3  |  Counties: 3144
 | density_60plus | reachability | yes | 0 | 100.0% | 0.008452 | 12.97 | 1.774e+04 |
 | agencies_per_1000_60plus | whitespace | yes | 0 | 100.0% | 0 | 1.29 | 9.957 |
 | chronic_burden_composite | insurability | yes | 187 | 94.1% | 6.6 | 15.4 | 24 |
-| risk_behaviour_composite | insurability | yes | 187 | 94.1% | 10.3 | 24.45 | 41.3 |
+| risk_behaviour_composite | insurability | yes | 187 | 94.1% | 12.53 | 27.27 | 42.43 |
 | expected_ownership_65 | size | no | 0 | 100.0% | 0.3581 | 0.4837 | 0.6304 |
 | coverage_gap_households_60 | size | no | 0 | 100.0% | 3.949 | 1708 | 4.013e+05 |
 | area_health_context | insurability | no | 188 | 94.0% | 6.6 | 15.46 | 24 |
@@ -45,8 +45,8 @@ Config version: 3  |  Counties: 3144
 - `volume`: max |sum(contributions) - total| = 4.263e-14
 - `balanced`: max |sum(contributions) - total| = 4.263e-14
 - `final_expense`: max |sum(contributions) - total| = 4.263e-14
-- `legacy_wealth`: max |sum(contributions) - total| = 4.263e-14
-- `spouse_protection`: max |sum(contributions) - total| = 2.842e-14
+- `legacy_wealth`: max |sum(contributions) - total| = 2.842e-14
+- `spouse_protection`: max |sum(contributions) - total| = 4.263e-14
 
 **Invariant PASSED** (tolerance 1e-9, observed 4.263e-14).
 
@@ -62,17 +62,17 @@ field is read, scored, used as a filter, or displayed.
 
 Top 5:
 
-1. Brunswick County, North Carolina - 91.42 (60+: 81,193)
-1. Beaufort County, South Carolina - 90.51 (60+: 80,215)
-1. Sumter County, Florida - 90.41 (60+: 103,924)
-1. Washington County, Rhode Island - 90.40 (60+: 46,645)
-1. Sussex County, Delaware - 89.81 (60+: 116,101)
+1. Brunswick County, North Carolina - 91.27 (60+: 81,193)
+1. Sumter County, Florida - 91.02 (60+: 103,924)
+1. Sussex County, Delaware - 90.59 (60+: 116,101)
+1. Beaufort County, South Carolina - 90.45 (60+: 80,215)
+1. Washington County, Rhode Island - 90.37 (60+: 46,645)
 
 Bottom 5 (eligible):
 
-1. Desha County, Arkansas - 16.84 (60+: 3,004)
-1. Reeves County, Texas - 16.57 (60+: 2,514)
-1. Winn Parish, Louisiana - 15.41 (60+: 3,351)
-1. Tunica County, Mississippi - 15.40 (60+: 2,003)
-1. Dawson County, Texas - 15.13 (60+: 2,693)
+1. Desha County, Arkansas - 16.85 (60+: 3,004)
+1. Reeves County, Texas - 16.25 (60+: 2,514)
+1. Winn Parish, Louisiana - 15.46 (60+: 3,351)
+1. Tunica County, Mississippi - 15.34 (60+: 2,003)
+1. Dawson County, Texas - 14.68 (60+: 2,693)
 

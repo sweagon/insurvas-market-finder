@@ -22,10 +22,11 @@ const AXES: { id: AxisId; label: string; log?: boolean }[] = [
   { id: "insurability", label: SUBSCORE_LABEL.insurability },
 ];
 
-function valueOf(c: CountyRow, lens: LensId, axis: AxisId): number {
+/** Value for one axis, or null when the sub-score was unavailable. */
+function valueOf(c: CountyRow, lens: LensId, axis: AxisId): number | null {
   if (axis === "pop60") return c.pop60;
   if (axis === "total") return c.scores[lens].total;
-  return c.scores[lens].subscores?.[axis] ?? 0;
+  return c.scores[lens].subscores?.[axis] ?? null;
 }
 
 const W = 1000;
@@ -39,12 +40,25 @@ export default function Scatter() {
   const [yAxis, setYAxis] = useState<AxisId>("total");
   const [hover, setHover] = useState<{ fips: string; x: number; y: number } | null>(null);
 
-  const list = useMemo(() => counties.filter((c) => c.scores?.[lens]?.eligible), [counties, lens]);
+  // A county is only plottable when both axes have a value; counties with an
+  // unavailable sub-score are left out rather than drawn at zero.
+  const list = useMemo(
+    () =>
+      counties.filter(
+        (c) =>
+          c.scores?.[lens]?.eligible &&
+          valueOf(c, lens, xAxis) != null &&
+          valueOf(c, lens, yAxis) != null,
+      ),
+    [counties, lens, xAxis, yAxis],
+  );
   const xMeta = AXES.find((a) => a.id === xAxis)!;
   const yMeta = AXES.find((a) => a.id === yAxis)!;
 
   const domain = (axis: AxisId, meta: { log?: boolean }) => {
-    const vals = list.map((c) => valueOf(c, lens, axis)).filter((v) => Number.isFinite(v) && v > 0);
+    const vals = list
+      .map((c) => valueOf(c, lens, axis))
+      .filter((v): v is number => v != null && Number.isFinite(v) && v > 0);
     const lo = Math.min(...vals);
     const hi = Math.max(...vals);
     if (meta.log) return [Math.log10(Math.max(1, lo)), Math.log10(Math.max(10, hi))] as const;
@@ -112,13 +126,15 @@ export default function Scatter() {
               {list.map((c) => {
                 const s = c.scores[lens];
                 const isSel = selectedFips === c.fips;
+                const xv = valueOf(c, lens, xAxis) ?? 0;
+                const yv = valueOf(c, lens, yAxis) ?? 0;
                 return (
                   <circle
                     key={c.fips}
-                    cx={sx(valueOf(c, lens, xAxis))}
-                    cy={sy(valueOf(c, lens, yAxis))}
+                    cx={sx(xv)}
+                    cy={sy(yv)}
                     r={isSel ? 5 : 2.4}
-                    fill={isSel ? "var(--text-primary)" : color(s.total)}
+                    fill={isSel ? "var(--text-primary)" : color(s.total ?? 0)}
                     stroke={isSel ? "var(--accent)" : "none"}
                     strokeWidth={isSel ? 2 : 0}
                     opacity={isSel ? 1 : 0.75}

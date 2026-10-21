@@ -68,3 +68,72 @@ def test_cap_ties_broken_by_value(cfg):
     vals = np.array([1.0, 2.0, 3.0, 100.0, 200.0] + [3.0] * 20)
     out = transform_metric(vals, metric, cfg)
     assert out[4] > out[3]  # 200 ranks above 100 despite equal winsor caps
+
+
+def _with_missing(cfg, n=30, seed=3, drop_subscore="insurability"):
+    """Synthetic matrix whose rows all lack one sub-score."""
+    fips, cols, pop = _synthetic(cfg, n=n, seed=seed)
+    for metric in cfg.scored_metrics:
+        if metric.subscore == drop_subscore:
+            cols[metric.id] = np.full(n, np.nan)
+    return fips, cols, pop
+
+
+def test_missing_subscore_is_unavailable_not_zero(cfg):
+    fips, cols, pop = _with_missing(cfg)
+    res = score_matrix(fips=fips, columns=cols, cfg=cfg, lens_id="volume", eligibility_pop=pop)
+    assert np.all(np.isnan(res.subscores["insurability"]))
+    # Every other sub-score is still computed.
+    assert np.all(np.isfinite(res.subscores["size"]))
+
+
+def test_missing_subscore_is_not_penalised(cfg):
+    """A county without a sub-score is scored on what it has, not ranked last."""
+    fips, cols, pop = _synthetic(cfg)
+    full = score_matrix(fips=fips, columns=cols, cfg=cfg, lens_id="volume", eligibility_pop=pop)
+
+    dropped = dict(cols)
+    for metric in cfg.scored_metrics:
+        if metric.subscore == "insurability":
+            dropped[metric.id] = np.full(len(fips), np.nan)
+    partial = score_matrix(
+        fips=fips, columns=dropped, cfg=cfg, lens_id="volume", eligibility_pop=pop
+    )
+
+    assert np.all(partial.coverage < 1.0)
+    assert np.all(partial.partial)
+
+    # The old behaviour scored the missing sub-score as 0, so the total was the
+    # sum of the available sub-scores with no renormalisation.
+    sub_weights = cfg.lens_weights_fraction("volume")
+    available = [s for s in cfg.sub_score_ids() if s != "insurability"]
+    unnormalised = sum(
+        full.subscores[s] * sub_weights[s] * 100.0 for s in available
+    )
+    assert np.all(partial.total > unnormalised)
+
+    # The renormalised total puts the available sub-scores back on 0-100.
+    expected = unnormalised / sum(sub_weights[s] for s in available)
+    assert np.allclose(partial.total, expected)
+
+
+def test_coverage_is_one_when_nothing_is_missing(cfg):
+    fips, cols, pop = _synthetic(cfg)
+    res = score_matrix(fips=fips, columns=cols, cfg=cfg, lens_id="volume", eligibility_pop=pop)
+    assert np.allclose(res.coverage, 1.0)
+    assert not np.any(res.partial)
+
+
+def test_contributions_still_sum_with_missing_data(cfg):
+    fips, cols, pop = _with_missing(cfg, drop_subscore="affordability")
+    res = score_matrix(fips=fips, columns=cols, cfg=cfg, lens_id="volume", eligibility_pop=pop)
+    total_from_contrib = np.sum(list(res.contributions.values()), axis=0)
+    assert np.max(np.abs(total_from_contrib - res.total)) < 1e-9
+
+
+def test_total_is_nan_when_no_subscore_is_available(cfg):
+    fips, cols, pop = _synthetic(cfg)
+    empty = {mid: np.full(len(fips), np.nan) for mid in cols}
+    res = score_matrix(fips=fips, columns=empty, cfg=cfg, lens_id="volume", eligibility_pop=pop)
+    assert np.all(np.isnan(res.total))
+    assert np.all(res.coverage == 0.0)

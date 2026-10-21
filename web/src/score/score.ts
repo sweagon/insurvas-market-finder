@@ -11,6 +11,11 @@
  *  - Percentile ranks use the average-rank / (n - 1) convention (SciPy
  *    "average"), with cap ties broken by the pre-winsorisation value, matching
  *    `np.lexsort((tiebreak, values))`.
+ *
+ * Missing data:
+ *  - A sub-score with no usable input is `NaN`, not zero. The weights of the
+ *    sub-scores that *are* available are renormalised onto the 0-100 scale and
+ *    `coverage`/`partial` report what was missing.
  */
 
 import configJson from "./config.generated.json";
@@ -50,6 +55,10 @@ export interface ScoreResult {
   subscores: Record<string, Float64Array>;
   contributions: Record<string, Float64Array>;
   eligibility: boolean[];
+  /** Share of sub-score weight that was available for each county. */
+  coverage: Float64Array;
+  /** True when at least one sub-score could not be computed. */
+  partial: boolean[];
 }
 
 const isFiniteNum = (x: number): boolean => Number.isFinite(x);
@@ -202,7 +211,8 @@ export function scoreMatrix(opts: {
 
   const subscores: Record<string, Float64Array> = {};
   const contributions: Record<string, Float64Array> = {};
-  const total = new Float64Array(n);
+  const available: Record<string, boolean[]> = {};
+  const rawSubContrib: Record<string, Float64Array> = {};
 
   for (const sub of config.subscores) {
     const metrics = config.metrics.filter((m) => m.scored && m.subscore === sub);
@@ -219,14 +229,20 @@ export function scoreMatrix(opts: {
         }
       }
     }
+    // A sub-score with no usable input is unavailable (NaN), not zero.
+    const hasData: boolean[] = [];
     const subScore = new Float64Array(n);
-    for (let i = 0; i < n; i++) subScore[i] = weightSum[i] > 0 ? acc[i] / weightSum[i] : 0;
+    for (let i = 0; i < n; i++) {
+      hasData.push(weightSum[i] > 0);
+      subScore[i] = weightSum[i] > 0 ? acc[i] / weightSum[i] : NaN;
+    }
+    available[sub] = hasData;
     subscores[sub] = subScore;
 
     const sw = subWeights[sub] ?? 0;
     const subContrib = new Float64Array(n);
-    for (let i = 0; i < n; i++) subContrib[i] = subScore[i] * sw * 100;
-    for (let i = 0; i < n; i++) total[i] += subContrib[i];
+    for (let i = 0; i < n; i++) subContrib[i] = hasData[i] ? subScore[i] * sw * 100 : 0;
+    rawSubContrib[sub] = subContrib;
 
     for (const m of metrics) {
       const mw = metricWeights[m.id] ?? 0;
@@ -244,6 +260,33 @@ export function scoreMatrix(opts: {
     }
   }
 
+  // Renormalise onto the 0-100 scale over the sub-scores that are available
+  // for each county. Mirrors `pipeline/score/reference.py`.
+  const weightAvailable = new Float64Array(n);
+  for (const sub of config.subscores) {
+    const sw = subWeights[sub] ?? 0;
+    const has = available[sub] ?? [];
+    for (let i = 0; i < n; i++) if (has[i]) weightAvailable[i] += sw;
+  }
+  const scale = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    scale[i] = weightAvailable[i] > 0 ? 1 / weightAvailable[i] : NaN;
+  }
+
+  const total = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let sum = 0;
+    for (const sub of config.subscores) sum += rawSubContrib[sub][i];
+    total[i] = sum * scale[i];
+  }
+  for (const id of Object.keys(contributions)) {
+    const arr = contributions[id];
+    for (let i = 0; i < n; i++) arr[i] *= scale[i];
+  }
+
+  const partial: boolean[] = [];
+  for (let i = 0; i < n; i++) partial.push(weightAvailable[i] < 1 - 1e-9);
+
   let eligibility: boolean[];
   if (opts.eligibilityPop) {
     eligibility = Array.from(opts.eligibilityPop, (p) => p >= config.params.eligibility_min_60plus);
@@ -251,5 +294,5 @@ export function scoreMatrix(opts: {
     eligibility = new Array(n).fill(true);
   }
 
-  return { total, subscores, contributions, eligibility };
+  return { total, subscores, contributions, eligibility, coverage: weightAvailable, partial };
 }

@@ -101,17 +101,19 @@ export interface MetaCatalog {
  * presented to a user as a rank range.
  */
 export interface ApiLensScore {
-  total: number;
-  p05: number;
-  p95: number;
+  total: number | null;
+  p05: number | null;
+  p95: number | null;
   rank: number | null;
   eligible: boolean;
-  sub: Record<string, number>;
+  sub: Record<string, number | null>;
   rank_p05?: number | null;
   rank_p50?: number | null;
   rank_p95?: number | null;
   p_top50?: number | null;
   partial?: boolean;
+  /** Share of the sub-score weight that could be computed for this county. */
+  coverage?: number | null;
 }
 
 /** A county as served in `rankings.json`. */
@@ -131,13 +133,13 @@ export interface RankingsPayload {
 
 /** Score bundle after the SPA has normalised sub-scores to a 0-100 scale. */
 export interface LensScore {
-  total: number;
-  p05: number;
-  p95: number;
+  total: number | null;
+  p05: number | null;
+  p95: number | null;
   rank: number | null;
   eligible: boolean;
-  /** Sub-scores scaled to 0-100. */
-  subscores: Record<SubScoreId, number>;
+  /** Sub-scores scaled to 0-100; `null` when the sub-score was unavailable. */
+  subscores: Record<SubScoreId, number | null>;
   rank_p05: number | null;
   rank_p50: number | null;
   rank_p95: number | null;
@@ -145,6 +147,8 @@ export interface LensScore {
   p_top50: number | null;
   /** True when at least one sub-score could not be computed for this county. */
   partial: boolean;
+  /** Share of the sub-score weight that could be computed (1 = complete). */
+  coverage: number | null;
 }
 
 /** A county row as held in the store: identity + metric matrix + scores. */
@@ -154,7 +158,7 @@ export interface CountyRow {
   state: string;
   abbr: string;
   pop60: number;
-  metrics: Record<string, number | string | null>;
+  metrics: Record<string, string | number | boolean | null>;
   scores: Record<LensId, LensScore>;
 }
 

@@ -6,7 +6,7 @@ import { Card } from "../design-system/primitives/Card";
 import { KpiCell } from "../design-system/patterns/kpi";
 import { usePreferences } from "../design-system/providers/PreferencesProvider";
 import { rampStops } from "../design-system/map/ramp";
-import { rankRange, popCompact, score } from "../state/format";
+import { scoreRange, popCompact, score } from "../state/format";
 import { EmptyState } from "../design-system/patterns/states";
 
 export default function Explore() {
@@ -32,7 +32,7 @@ export default function Explore() {
         value={(fips) => {
           const c = byFips[fips];
           const s = c?.scores?.[lens];
-          if (!s || !s.eligible) return null;
+          if (!s || !s.eligible || s.total == null) return null;
           return s.total / 100;
         }}
         flagged={(fips) => {
@@ -46,7 +46,7 @@ export default function Explore() {
         onShiftSelect={toggleCompare}
         theme={theme}
         colorblind={palette === "colorblind"}
-        hiddenSummary={ranked.slice(0, 50).map((c) => ({ fips: c.fips, label: `#${c.scores[lens].rank} ${c.name}, ${c.state} — score ${Math.round(c.scores[lens].total)}` }))}
+        hiddenSummary={ranked.slice(0, 50).map((c) => ({ fips: c.fips, label: `#${c.scores[lens].rank} ${c.name}, ${c.state} — score ${Math.round(c.scores[lens].total ?? 0)}` }))}
       />
 
       <div className="absolute left-4 top-4 z-panel hidden w-72 max-w-[calc(100vw-2rem)] sm:block">
@@ -59,7 +59,7 @@ export default function Explore() {
                 <button key={c.fips} type="button" onClick={() => select(c.fips)} className={`flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left transition-colors ${active ? "bg-surface2" : "hover:bg-surface2"}`}>
                   <span className="num w-6 text-caption text-tertiary">{s.rank}</span>
                   <span className="flex-1 truncate text-body text-primary">{c.name}, {c.state}</span>
-                  <span className="num text-body-sm text-secondary">{Math.round(s.total)}</span>
+                  <span className="num text-body-sm text-secondary">{Math.round(s.total ?? 0)}</span>
                 </button>
               );
             })}
@@ -74,7 +74,7 @@ export default function Explore() {
               <KpiCell label="Score" value={score(top.scores[lens].total)} />
               <KpiCell label="60+" value={popCompact(top.pop60)} />
               <KpiCell label="Rank" value={top.scores[lens].rank ? `#${top.scores[lens].rank}` : "—"} />
-              <KpiCell label="Range" value={rankRange(top.scores[lens].p05, top.scores[lens].p95)} valueClassName="text-num-md" />
+              <KpiCell label="Score range (P5-P95)" value={scoreRange(top.scores[lens].p05, top.scores[lens].p95)} valueClassName="text-num-md" />
             </div>
             <button type="button" onClick={() => select(top.fips)} className="mt-3 text-caption text-accenttext">View details →</button>
           </Card>
@@ -89,7 +89,7 @@ export default function Explore() {
 
       {hover.fips && byFips[hover.fips] && (
         <div className="pointer-events-none absolute z-tooltip rounded-control border border-default bg-surface1 px-2 py-1 text-caption shadow-l3" style={{ left: hover.x + 12, top: hover.y + 12 }}>
-          {byFips[hover.fips].name}, {byFips[hover.fips].state} — {Math.round(byFips[hover.fips].scores[lens].total)}
+          {byFips[hover.fips].name}, {byFips[hover.fips].state} — {Math.round(byFips[hover.fips].scores[lens].total ?? 0)}
         </div>
       )}
     </div>

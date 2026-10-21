@@ -23,6 +23,9 @@ import {
 
 export type Source = "live" | "snapshot";
 
+/** A value in the columnar metric matrix. */
+export type MetricValue = string | number | boolean | null;
+
 export interface LoadedRankings {
   payload: RankingsPayload;
   source: Source;
@@ -31,7 +34,7 @@ export interface LoadedRankings {
 export interface CountyColumnar {
   meta: Record<string, unknown>;
   length: number;
-  columns: Record<string, Array<string | number | null>>;
+  columns: Record<string, Array<string | number | boolean | null>>;
 }
 
 const SNAPSHOT_URL = "/data/rankings.json";
@@ -69,8 +72,8 @@ function columnsToRows(data: CountyColumnar) {
     return col ? col[i] : null;
   };
   return Array.from({ length: n }, (_, i) => {
-    const metrics: Record<string, number | string | null> = {};
-    for (const key of Object.keys(cols)) metrics[key] = get(key, i) as number | string | null;
+    const metrics: Record<string, MetricValue> = {};
+    for (const key of Object.keys(cols)) metrics[key] = get(key, i) as MetricValue;
     return {
       fips: String(get("fips", i) ?? ""),
       name: String(get("name", i) ?? ""),
@@ -83,14 +86,17 @@ function columnsToRows(data: CountyColumnar) {
 }
 
 function toLensScore(s: ApiLensScore | undefined): LensScore {
-  const subs = (s?.sub ?? {}) as Record<string, number | undefined>;
+  const subs = (s?.sub ?? {}) as Record<string, number | null | undefined>;
   const subscores = Object.fromEntries(
-    SUB_SCORE_IDS.map((k) => [k, (subs[k] ?? 0) * 100]),
-  ) as Record<SubScoreId, number>;
+    SUB_SCORE_IDS.map((k) => [
+      k,
+      subs[k] === undefined || subs[k] === null ? null : subs[k] * 100,
+    ]),
+  ) as Record<SubScoreId, number | null>;
   return {
-    total: s?.total ?? 0,
-    p05: s?.p05 ?? 0,
-    p95: s?.p95 ?? 0,
+    total: s?.total ?? null,
+    p05: s?.p05 ?? null,
+    p95: s?.p95 ?? null,
     rank: s?.rank ?? null,
     eligible: s?.eligible ?? false,
     subscores,
@@ -99,6 +105,7 @@ function toLensScore(s: ApiLensScore | undefined): LensScore {
     rank_p95: s?.rank_p95 ?? null,
     p_top50: s?.p_top50 ?? null,
     partial: s?.partial ?? false,
+    coverage: s?.coverage ?? null,
   };
 }
 

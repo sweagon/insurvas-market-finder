@@ -16,6 +16,16 @@ Percentile ranks use the *average* rank / (n - 1) convention (matching
 ``scipy.stats.rankdata`` "average" and the JS implementation), computed over
 non-null values only. Ties receive the same rank. Direction is applied after
 ranking so that higher always means better.
+
+Missing data
+------------
+A sub-score for which a county has no usable input is **unavailable**, not
+"worst possible": it is ``NaN``, it does not contribute to the total, and the
+weights of the sub-scores that *are* available are renormalised back onto the
+0-100 scale. Treating an absent dimension as a zero would rank every county
+with a data gap below counties that are genuinely weak on that dimension.
+``coverage`` reports the share of sub-score weight that was available and
+``partial`` flags every county whose coverage is below 1.
 """
 
 from __future__ import annotations
@@ -33,9 +43,12 @@ class ScoreResult:
     total: np.ndarray
     subscores: dict[str, np.ndarray]
     contributions: dict[str, np.ndarray]  # metric id -> contribution to total
-    subscore_contributions: dict[str, np.ndarray]  # subscore -> contribution
+    subscore_contributions: dict[str, np.ndarray]
     eligibility: np.ndarray  # bool
     used_metrics: list[str] = field(default_factory=list)
+    coverage: np.ndarray | None = None  # share of sub-score weight available
+    partial: np.ndarray | None = None  # coverage < 1
+
 
 
 def winsorize(values: np.ndarray, lower: float, upper: float) -> np.ndarray:
@@ -158,6 +171,7 @@ def score_matrix(
     subscores: dict[str, np.ndarray] = {}
     subscore_contributions: dict[str, np.ndarray] = {}
     contributions: dict[str, np.ndarray] = {}
+    available: dict[str, np.ndarray] = {}
     used: list[str] = []
 
     for sub in cfg.sub_score_ids():
@@ -175,12 +189,15 @@ def score_matrix(
             acc = acc + np.where(valid, arr * mw, 0.0)
             weight_sum = weight_sum + np.where(valid, mw, 0.0)
             used.append(metric.id)
+        has_data = weight_sum > 0
         with np.errstate(invalid="ignore", divide="ignore"):
-            sub_score = np.where(weight_sum > 0, acc / weight_sum, 0.0)
+            sub_score = np.where(
+                has_data, acc / np.where(has_data, weight_sum, 1.0), np.nan
+            )
         subscores[sub] = sub_score
-
+        available[sub] = has_data
         sw = float(sub_weights.get(sub, 0.0))
-        sub_contrib = sub_score * sw * 100.0
+        sub_contrib = np.where(has_data, sub_score * sw * 100.0, 0.0)
         subscore_contributions[sub] = sub_contrib
         # Distribute the sub-score contribution to each metric proportionally.
         for metric in metrics:
@@ -192,11 +209,32 @@ def score_matrix(
             if sub == "insurability" and flip and metric.direction == "lower_is_better":
                 arr = 1.0 - arr
             valid = np.isfinite(arr)
-            denom = np.where(weight_sum > 0, weight_sum, 1.0)
+            denom = np.where(has_data, weight_sum, 1.0)
             share = np.where(valid, mw / denom, 0.0)
             contributions[metric.id] = sub_contrib * share
 
-    total = np.sum([subscore_contributions[s] for s in cfg.sub_score_ids()], axis=0)
+    # Renormalise onto the 0-100 scale over the sub-scores that are actually
+    # available for each county. A county that is missing a sub-score is
+    # scored on what we know and flagged as partial, never scored as if the
+    # missing dimension were zero.
+    weight_available = np.zeros(n)
+    for sub in cfg.sub_score_ids():
+        sw = float(sub_weights.get(sub, 0.0))
+        weight_available = weight_available + np.where(available[sub], sw, 0.0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        scale = np.where(
+            weight_available > 0,
+            1.0 / np.where(weight_available > 0, weight_available, 1.0),
+            np.nan,
+        )
+
+    total = np.sum([subscore_contributions[s] for s in cfg.sub_score_ids()], axis=0) * scale
+    contributions = {mid: arr * scale for mid, arr in contributions.items()}
+    subscore_contributions = {
+        sub: arr * scale for sub, arr in subscore_contributions.items()
+    }
+    coverage = weight_available
+    partial = weight_available < 1.0 - 1e-9
 
     if eligibility_pop is None:
         eligibility = np.ones(n, dtype=bool)
@@ -211,4 +249,6 @@ def score_matrix(
         subscore_contributions=subscore_contributions,
         eligibility=eligibility,
         used_metrics=sorted(set(used)),
+        coverage=coverage,
+        partial=partial,
     )

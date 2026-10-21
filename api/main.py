@@ -154,7 +154,7 @@ def rankings(
         params.append(_state_to_fips(state))
     sql = f"""
         SELECT s.fips, c.ctyname AS name, c.stname AS state, c.total_pop, c.pop_60plus,
-               s.total, s.p05, s.p95, s.rank, s.eligible,
+               s.total, s.p05, s.p50, s.p95, s.rank, s.eligible, s.coverage, s.partial,
                s.size, s.affordability, s.need, s.reachability, s.whitespace, s.insurability
         FROM scores s JOIN county c USING (fips)
         WHERE {" AND ".join(where)}

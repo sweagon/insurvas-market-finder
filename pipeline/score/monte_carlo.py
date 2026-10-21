@@ -12,6 +12,8 @@ estimates, CBP counts) we use a documented coefficient of variation from
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 from pipeline.config import MetricsConfig
@@ -62,7 +64,14 @@ def monte_carlo_total(
         )
         totals[d] = res.total
     return {
-        "p05": np.percentile(totals, 5, axis=0),
-        "p50": np.percentile(totals, 50, axis=0),
-        "p95": np.percentile(totals, 95, axis=0),
+        "p05": _percentile(totals, 5),
+        "p50": _percentile(totals, 50),
+        "p95": _percentile(totals, 95),
     }
+
+
+def _percentile(totals: np.ndarray, q: float) -> np.ndarray:
+    """Percentile across draws, ignoring counties that could not be scored."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # all-NaN slices
+        return np.nanpercentile(totals, q, axis=0)

@@ -8,7 +8,7 @@ import { KpiCell, KpiStrip } from "../design-system/patterns/kpi";
 import { ScoreChip, RankBadge, Monogram } from "../design-system/primitives/badges";
 import { Input } from "../design-system/primitives/inputs";
 import { VirtualList } from "../design-system/primitives/VirtualList";
-import { popCompact, rankRange, score, stateAbbr } from "../state/format";
+import { popCompact, scoreRange, score, stateAbbr } from "../state/format";
 import { LENS_COLOR } from "../state/lensMeta";
 import { useState } from "react";
 
@@ -20,7 +20,7 @@ export default function Rankings() {
     let out = counties.filter((c) => c.scores?.[lens]?.eligible);
     if (filters.states.length) out = out.filter((c) => filters.states.includes(c.state));
     if (filters.minPop60) out = out.filter((c) => c.pop60 >= filters.minPop60);
-    if (filters.minScore) out = out.filter((c) => c.scores[lens].total >= filters.minScore);
+    if (filters.minScore) out = out.filter((c) => (c.scores[lens].total ?? 0) >= filters.minScore);
     if (filters.query) {
       const q = filters.query.toLowerCase();
       out = out.filter((c) => c.name.toLowerCase().includes(q) || c.state.toLowerCase().includes(q) || c.fips.includes(q));
@@ -75,7 +75,7 @@ export default function Rankings() {
           <KpiCell label="Ranked" value={list.length.toLocaleString()} />
           <KpiCell label="Eligible" value={counties.filter((c) => c.scores[lens].eligible).length.toLocaleString()} />
           <KpiCell label="Selected" value={compare.length.toLocaleString()} />
-          <KpiCell label="Median score" value={score(list.reduce((s, c) => s + c.scores[lens].total, 0) / Math.max(1, list.length))} />
+          <KpiCell label="Median score" value={score(list.reduce((s, c) => s + (c.scores[lens].total ?? 0), 0) / Math.max(1, list.length))} />
         </KpiStrip>
 
         {view === "table" ? (
@@ -111,7 +111,7 @@ export default function Rankings() {
                     </span>
                     <span className="justify-self-end"><ScoreChip value={s.total} /></span>
                     <span className="num justify-self-end text-secondary">{popCompact(c.pop60)}</span>
-                    <span className="num text-caption text-tertiary">{rankRange(s.p05, s.p95)}</span>
+                    <span className="num text-caption text-tertiary">{scoreRange(s.p05, s.p95)}</span>
                     <span className="justify-self-end">
                       <button
                         type="button"

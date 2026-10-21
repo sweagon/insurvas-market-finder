@@ -3,12 +3,21 @@
 Writes ``tests/parity/inputs.json`` (a small synthetic county matrix) and
 ``tests/parity/expected.json`` (score_matrix output for every lens). The
 TypeScript port in ``web/src/score/score.ts`` is asserted against the same files
-by ``web/src/score/score.test.ts`` to <= 1e-9.
+by ``web/src/score/parity.test.ts`` to <= 1e-9.
+
+The synthetic matrix deliberately contains missing values - a whole missing
+sub-score, a missing sub-score pair and scattered single holes - so the
+partial-data path (NaN sub-score, renormalised total, coverage) is part of the
+parity contract and not just the happy path.
+
+Non-finite numbers are written as ``null`` so the golden files stay strict
+JSON; the TypeScript test maps ``null`` back to ``NaN``.
 """
 
 from __future__ import annotations
 
 import json
+import math
 
 import numpy as np
 
@@ -34,7 +43,37 @@ def _synthetic(n: int = 40, seed: int = 7) -> dict[str, list[float]]:
         base[-1] = np.min(base)
         base[-2] = np.min(base)
         data[m.id] = [float(x) for x in base]
+    _inject_missing(data, cfg, n)
     return data
+
+
+def _inject_missing(data: dict[str, list[float]], cfg, n: int) -> None:
+    """Punch holes so the partial-data path is exercised by the parity test."""
+    by_sub: dict[str, list[str]] = {}
+    for m in cfg.scored_metrics:
+        by_sub.setdefault(m.subscore, []).append(m.id)
+
+    def drop(sub: str, row: int) -> None:
+        for mid in by_sub.get(sub, []):
+            data[mid][row] = math.nan
+
+    # A county with no health context at all (e.g. outside the PLACES release).
+    drop("insurability", 3)
+    # A county missing two whole sub-scores.
+    drop("affordability", 4)
+    drop("reachability", 4)
+    # A county missing a single metric inside an otherwise complete sub-score.
+    data[by_sub["size"][0]][5] = math.nan
+    # Scattered single holes across the remaining rows.
+    rng = np.random.default_rng(11)
+    for i in range(6, n):
+        for m in cfg.scored_metrics:
+            if rng.random() < 0.04:
+                data[m.id][i] = math.nan
+
+
+def _clean(values) -> list[float | None]:
+    return [None if not math.isfinite(float(v)) else float(v) for v in values]
 
 
 def generate() -> None:
@@ -44,7 +83,7 @@ def generate() -> None:
     fips = [f"{i:05d}" for i in range(n)]
     pop = [5000.0 + 1000.0 * i for i in range(n)]
 
-    expected: dict[str, dict[str, list[float]]] = {}
+    expected: dict[str, dict[str, list]] = {}
     for lens_id in cfg.lenses:
         res = score_matrix(
             fips=fips,
@@ -54,18 +93,31 @@ def generate() -> None:
             eligibility_pop=np.array(pop),
         )
         expected[lens_id] = {
-            "total": [float(x) for x in res.total],
-            "subscores": {s: [float(x) for x in arr] for s, arr in res.subscores.items()},
-            "contributions": {m: [float(x) for x in arr] for m, arr in res.contributions.items()},
+            "total": _clean(res.total),
+            "subscores": {s: _clean(arr) for s, arr in res.subscores.items()},
+            "contributions": {m: _clean(arr) for m, arr in res.contributions.items()},
             "eligibility": [bool(x) for x in res.eligibility],
+            "coverage": _clean(res.coverage if res.coverage is not None else []),
+            "partial": [bool(x) for x in (res.partial if res.partial is not None else [])],
         }
 
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "inputs.json").write_text(
-        json.dumps({"fips": fips, "columns": columns, "pop": pop}), encoding="utf-8"
+        json.dumps(
+            {
+                "fips": fips,
+                "columns": {k: _clean(v) for k, v in columns.items()},
+                "pop": pop,
+            },
+            allow_nan=False,
+        ),
+        encoding="utf-8",
     )
     (OUT / "expected.json").write_text(
-        json.dumps({"lens_order": list(cfg.lenses.keys()), "expected": expected}), encoding="utf-8"
+        json.dumps(
+            {"lens_order": list(cfg.lenses.keys()), "expected": expected}, allow_nan=False
+        ),
+        encoding="utf-8",
     )
     _export_scoring_config(cfg)
 

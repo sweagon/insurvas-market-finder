@@ -15,10 +15,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from datetime import UTC, datetime
 
 import duckdb
+import numpy as np
 import polars as pl
 
 from pipeline import paths
@@ -52,12 +54,26 @@ def _config_hash(cfg) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
+def _num(value, nd: int = 2) -> float | None:
+    """JSON-safe number. JSON has no NaN or Infinity, so they become null."""
+    f = float(value)
+    if not math.isfinite(f):
+        return None
+    return round(f, nd)
+
+
 def _identity(df: pl.DataFrame) -> pl.DataFrame:
     keep = [c for c in IDENTITY_COLS if c in df.columns]
     return df.select(keep)
 
 
-def _columnar(cfg, df: pl.DataFrame, identity: pl.DataFrame, meta: dict) -> dict:
+def _columnar(
+    cfg,
+    df: pl.DataFrame,
+    identity: pl.DataFrame,
+    meta: dict,
+    lens_scores: dict[str, pl.DataFrame] | None = None,
+) -> dict:
     """Columnar serving artefact (design contract §1: counties.json).
 
     One array per field, all the same length, so the SPA can load the whole
@@ -89,6 +105,20 @@ def _columnar(cfg, df: pl.DataFrame, identity: pl.DataFrame, meta: dict) -> dict
     for flag in FLAG_COLS:
         if flag in df.columns:
             cols[flag] = [bool(v) if v is not None else False for v in df[flag].to_list()]
+
+    # Data coverage: the worst share of sub-score weight that was available
+    # for each county under any lens, and whether any lens was incomplete.
+    if lens_scores:
+        coverage = [1.0] * rows
+        partial = [False] * rows
+        for frame in lens_scores.values():
+            cov = frame["coverage"].to_list()
+            prt = frame["partial"].to_list()
+            for i in range(rows):
+                coverage[i] = min(coverage[i], float(cov[i]))
+                partial[i] = partial[i] or bool(prt[i])
+        cols["coverage"] = [round(c, 4) for c in coverage]
+        cols["partial"] = partial
 
     # Score inputs come from the same config as the reference scorer, so the
     # worker and the pipeline can never drift (parity test guards this).
@@ -198,7 +228,7 @@ def build(*, mc_draws: int | None = None) -> dict:
             draws=lens_draws,
         )
         total = res.total
-        # Rank 1 = best, only among eligible counties.
+        # Rank 1 = best, only among eligible counties with a computable score.
         rank = _ranks(total, res.eligibility)
         sub = {
             "fips": fips,
@@ -208,6 +238,8 @@ def build(*, mc_draws: int | None = None) -> dict:
             "p95": band["p95"],
             "rank": rank,
             "eligible": res.eligibility,
+            "coverage": res.coverage if res.coverage is not None else np.ones(len(fips)),
+            "partial": res.partial if res.partial is not None else np.zeros(len(fips), bool),
         }
         for s in cfg.sub_score_ids():
             sub[f"sub_{s}"] = res.subscores[s]
@@ -218,23 +250,32 @@ def build(*, mc_draws: int | None = None) -> dict:
                 {
                     "lens": lens_id,
                     "fips": f,
-                    "total": float(total[i]),
-                    "p05": float(band["p05"][i]),
-                    "p50": float(band["p50"][i]),
-                    "p95": float(band["p95"][i]),
+                    "total": _num(total[i], 4),
+                    "p05": _num(band["p05"][i], 4),
+                    "p50": _num(band["p50"][i], 4),
+                    "p95": _num(band["p95"][i], 4),
                     "rank": rank[i] if res.eligibility[i] and rank[i] is not None else None,
                     "eligible": bool(res.eligibility[i]),
-                    **{s: float(res.subscores[s][i]) for s in cfg.sub_score_ids()},
+                    "coverage": _num(sub["coverage"][i], 6),
+                    "partial": bool(sub["partial"][i]),
+                    **{s: _num(res.subscores[s][i], 6) for s in cfg.sub_score_ids()},
                 }
             )
         for mid, arr in res.contributions.items():
             for i, f in enumerate(fips):
                 contrib_rows.append(
-                    {"lens": lens_id, "fips": f, "metric": mid, "contribution": float(arr[i])}
+                    {"lens": lens_id, "fips": f, "metric": mid, "contribution": _num(arr[i], 8)}
                 )
 
     scores_df = pl.DataFrame(score_rows)
     contrib_df = pl.DataFrame(contrib_rows)
+
+    partial_by_lens = {
+        lid: int(frame["partial"].sum()) for lid, frame in lens_scores.items()
+    }
+    min_coverage = min(
+        (float(frame["coverage"].min()) for frame in lens_scores.values()), default=1.0
+    )
 
     meta = {
         "built_at": datetime.now(UTC).isoformat(),
@@ -247,6 +288,8 @@ def build(*, mc_draws: int | None = None) -> dict:
         "mc_draws": mc_draws or cfg.params.monte_carlo_draws,
         "eligibility_min_60plus": cfg.params.eligibility_min_60plus,
         "target_age_min": cfg.params.target_age_min,
+        "partial_counties": partial_by_lens,
+        "min_coverage": round(min_coverage, 4),
         "duration_s": round(time.time() - started, 1),
     }
 
@@ -258,10 +301,10 @@ def build(*, mc_draws: int | None = None) -> dict:
 
 
 def _ranks(total, eligible) -> list[int | None]:
-    import numpy as np
-
     out: list[int | None] = [None] * len(total)
     idx = np.where(eligible)[0]
+    # A county whose score could not be computed is not ranked.
+    idx = idx[np.isfinite(total[idx])]
     order = idx[np.argsort(-total[idx])]
     for r, i in enumerate(order, start=1):
         out[int(i)] = r
@@ -307,12 +350,15 @@ def _write_rankings_json(
         }
         for lid, frame in lens_frames.items():
             rec["scores"][lid] = {
-                "total": round(float(frame["total"][i]), 2),
-                "p05": round(float(frame["p05"][i]), 1),
-                "p95": round(float(frame["p95"][i]), 1),
+                "total": _num(frame["total"][i], 2),
+                "p05": _num(frame["p05"][i], 1),
+                "p50": _num(frame["p50"][i], 1),
+                "p95": _num(frame["p95"][i], 1),
                 "rank": (int(frame["rank"][i]) if frame["rank"][i] is not None else None),
                 "eligible": bool(frame["eligible"][i]),
-                "sub": {s: round(float(frame[f"sub_{s}"][i]), 3) for s in cfg.sub_score_ids()},
+                "coverage": _num(frame["coverage"][i], 4),
+                "partial": bool(frame["partial"][i]),
+                "sub": {s: _num(frame[f"sub_{s}"][i], 3) for s in cfg.sub_score_ids()},
             }
         records.append(rec)
     payload = {
@@ -344,7 +390,7 @@ def _write_columnar_json(
     out = paths.WEB_PUBLIC_DATA
     out.mkdir(parents=True, exist_ok=True)
 
-    counties = _columnar(cfg, df, identity, meta)
+    counties = _columnar(cfg, df, identity, meta, lens_scores)
     (out / "counties.json").write_text(
         json.dumps(counties, separators=(",", ":")), encoding="utf-8"
     )

@@ -3,7 +3,7 @@ import { useStore } from "../state/store";
 import { PageHeader } from "../design-system/patterns/PageHeader";
 import { Card } from "../design-system/primitives/Card";
 import { RankBadge, ScoreChip, Monogram } from "../design-system/primitives/badges";
-import { popCompact, rankRange, score, stateAbbr, metricValue } from "../state/format";
+import { popCompact, scoreRange, score, stateAbbr, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR, LENS_COLOR } from "../state/lensMeta";
 import type { CountyRow } from "../data/types";
 
@@ -85,7 +85,7 @@ export default function Compare() {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-4 text-caption">
                       <div><div className="text-tertiary">60+ population</div><div className="num mt-0.5 text-body text-primary">{popCompact(c.pop60)}</div></div>
-                      <div><div className="text-tertiary">Rank range</div><div className="num mt-0.5 text-body text-primary">{rankRange(s.p05, s.p95)}</div></div>
+                      <div><div className="text-tertiary">Score range (P5-P95)</div><div className="num mt-0.5 text-body text-primary">{scoreRange(s.p05, s.p95)}</div></div>
                     </div>
                     <button type="button" onClick={() => select(c.fips)} className="mt-3 text-caption text-accenttext">Open details →</button>
                   </Card>
