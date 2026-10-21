@@ -35,6 +35,27 @@ parts, and uncertainty is shown rather than hidden.**
 Metric-level definitions, units, directions, transforms, sources, vintages and
 per-lens weights are all in `config/metrics.yaml`. Nothing is hard-coded elsewhere.
 
+### The two PLACES composites
+
+`chronic_burden_composite` and `risk_behaviour_composite` are **standardised
+indices**, not prevalences. Each CDC PLACES measure in the group is z-scored
+across the counties in the build universe, and the composite is the mean of
+those z-scores. Z-scoring matters: raw crude prevalences differ by an order of
+magnitude across the group (BPHIGH is roughly four times CANCER), so a plain
+mean of percentages would be a measure of scale rather than of burden. A county
+that is missing any constituent measure gets **no** composite at all, rather
+than a partial one.
+
+`area_health_context` is a separate, unscored context metric: the mean of the
+PLACES `MHLTH` (poor mental health) and `PHLTH` (poor physical health) crude
+prevalences, reported as a percentage.
+
+### Living arrangements
+
+`spouse_share_65plus` uses ACS table B09021 for the **65-and-over** block:
+people aged 65+ who are a spouse of, or living with, a spouse, over all people
+aged 65+ in households. It is a household-coupling proxy, not marital status.
+
 ## 3. Turning metrics into a score (rule R4)
 
 For every scored metric, in this order:
@@ -102,7 +123,23 @@ observations. They apply national ownership-by-income-band rates
 county's local 65+ income distribution. They are labelled `modeled: true`, are
 **never scored**, and exist only to give a sense of coverage gap. Attribution:
 "Source: 2026 Insurance Barometer Study, LIMRA and Life Happens"; the survey covers
-adults 18-75.
+adults 18-75 and has a margin of error of +/- 3 percentage points.
+
+**How the prior is built.** The barometer publishes two *household-level* anchors
+- 29% of households under $50K and 64% of households at $150K or more - and a
+*person-level* headline of 52% of adults aged 18-75. Those are different
+weightings of the same survey, so the 52% figure is **not** used to fit a
+household income curve. We fit a logistic curve in log(income) across the 16
+ACS B19037 65+ householder income bands, solving for the curve's two parameters
+so that the two household-level anchors are reproduced as group averages when
+weighted by the national 65+ household distribution. The curve is monotone in
+income by construction. Applying it to a county's own income mix gives that
+county's modelled ownership rate; `coverage_gap_households_60` is the number of
+households with a 65+ householder times one minus that rate.
+
+These are national priors applied to local distributions. They are not
+observations, they do not know anything about any individual's coverage, and
+they are never scored.
 
 ## 7. Rule R7 - protected attributes (non-negotiable)
 

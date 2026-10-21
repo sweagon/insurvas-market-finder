@@ -18,6 +18,7 @@ import json
 import math
 import time
 from datetime import UTC, datetime
+from typing import Any
 
 import duckdb
 import numpy as np
@@ -192,7 +193,7 @@ def build(*, mc_draws: int | None = None) -> dict:
     cfg = load_config()
     manifest = Manifest()
 
-    df = build_metric_matrix(manifest)
+    df = build_metric_matrix(manifest, cfg)
     df = df.with_columns(
         stusps=pl.col("state").replace_strict(
             STATE_FIPS_TO_USPS, default=None, return_dtype=pl.Utf8
@@ -230,7 +231,7 @@ def build(*, mc_draws: int | None = None) -> dict:
         total = res.total
         # Rank 1 = best, only among eligible counties with a computable score.
         rank = _ranks(total, res.eligibility)
-        sub = {
+        sub: dict[str, Any] = {
             "fips": fips,
             "total": total,
             "p05": band["p05"],
@@ -270,11 +271,10 @@ def build(*, mc_draws: int | None = None) -> dict:
     scores_df = pl.DataFrame(score_rows)
     contrib_df = pl.DataFrame(contrib_rows)
 
-    partial_by_lens = {
-        lid: int(frame["partial"].sum()) for lid, frame in lens_scores.items()
-    }
+    partial_by_lens = {lid: int(frame["partial"].sum()) for lid, frame in lens_scores.items()}
     min_coverage = min(
-        (float(frame["coverage"].min()) for frame in lens_scores.values()), default=1.0
+        (float(np.min(frame["coverage"].to_numpy())) for frame in lens_scores.values()),
+        default=1.0,
     )
 
     meta = {

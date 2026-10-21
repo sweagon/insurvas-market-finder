@@ -181,7 +181,7 @@
       }
     },
     {
-      "id": "spouse_share_60plus",
+      "id": "spouse_share_65plus",
       "subscore": "need",
       "direction": "higher_is_better",
       "transform": "none",

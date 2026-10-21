@@ -10,8 +10,13 @@ metric, plus ``*_imputed`` / ``*_low_confidence`` flags where relevant.
 
 from __future__ import annotations
 
-import polars as pl
+import math
 
+import numpy as np
+import polars as pl
+from scipy.optimize import least_squares
+
+from pipeline.config import load_config
 from pipeline.fetch import census_acs, popest
 from pipeline.fetch.bea import fetch_bea
 from pipeline.fetch.cbp import fetch_cbp
@@ -42,35 +47,96 @@ def _gazetteer(gazetteer_path) -> pl.DataFrame:
     )
 
 
-def _income_band_ownership_rates() -> list[float]:
+def _logit(p: float) -> float:
+    return math.log(p / (1.0 - p))
+
+
+def _income_band_ownership_rates(
+    *,
+    band_midpoints_k: list[float],
+    band_shares: list[float],
+    under_50k: float,
+    at_150k_plus: float,
+    asymptote: float,
+    under_50k_max_k: float,
+    at_150k_plus_min_k: float,
+) -> list[float]:
     """Ownership rate for each of the 16 ACS 65+ income bands (low to high).
 
-    Anchored on the LIMRA 2026 Barometer bands (under $50k = 0.29, $150k+ =
-    0.64) and interpolated monotonically across the 16 ACS bands. These are
-    national priors applied to local income distributions: modelled, not
-    observed (see ``priors`` in config/metrics.yaml).
+    The LIMRA 2026 Barometer publishes two *household-level* ownership anchors:
+    29% of households under $50K and 64% of households at $150K+. Its 52%
+    headline is a *person-level* figure (share of adults 18-75 who own a
+    policy), a different weighting of the same survey, so it cannot be used to
+    calibrate a household income curve and is not used here.
+
+    We fit a logistic in log(income),
+    ``r(m) = L / (1 + exp(-(log10(m) - c) / s))``,
+    and solve for ``(c, s)`` so that the two published anchors are reproduced as
+    group averages of the fitted curve when weighted by the national 65+
+    household distribution. The curve is monotone in income by construction.
+
+    These are national priors applied to local income distributions: modelled,
+    never observed (see ``priors`` in config/metrics.yaml).
     """
-    anchors_x = [0.0, 8.0, 15.0]  # band index anchors
-    anchors_y = [0.20, 0.52, 0.72]  # ownership rates at those anchors
-    rates: list[float] = []
-    for i in range(16):
-        x = float(min(i, 15))
-        if x <= anchors_x[0]:
-            r = anchors_y[0]
-        elif x >= anchors_x[2]:
-            r = anchors_y[2]
-        elif x <= anchors_x[1]:
-            t = (x - anchors_x[0]) / (anchors_x[1] - anchors_x[0])
-            r = anchors_y[0] + t * (anchors_y[1] - anchors_y[0])
-        else:
-            t = (x - anchors_x[1]) / (anchors_x[2] - anchors_x[1])
-            r = anchors_y[1] + t * (anchors_y[2] - anchors_y[1])
-        rates.append(round(r, 4))
-    return rates
+    if not (0 < under_50k < asymptote and 0 < at_150k_plus < asymptote):
+        raise ValueError("LIMRA anchors must lie inside (0, asymptote)")
+    n = len(band_midpoints_k)
+    if len(band_shares) != n:
+        raise ValueError("band_shares and band_midpoints_k must have the same length")
+
+    shares = np.asarray(band_shares, dtype=float)
+    midpoints = np.asarray(band_midpoints_k, dtype=float)
+    if not np.isfinite(shares).all() or shares.sum() <= 0:
+        raise ValueError("band_shares must be finite and sum to a positive number")
+    shares = shares / shares.sum()
+
+    lo = np.flatnonzero(midpoints < under_50k_max_k)
+    hi = np.flatnonzero(midpoints >= at_150k_plus_min_k)
+    if lo.size == 0 or hi.size == 0:
+        raise ValueError("could not split the income bands into the two anchored groups")
+
+    x = np.log10(midpoints)
+    z_lo, z_hi = _logit(under_50k / asymptote), _logit(at_150k_plus / asymptote)
+    # Initial guess: place the logistic's two anchor points at the income
+    # centroids of the two anchored groups.
+    x_lo = float((shares[lo] * midpoints[lo]).sum() / shares[lo].sum())
+    x_hi = float((shares[hi] * midpoints[hi]).sum() / shares[hi].sum())
+    s0 = (math.log10(x_hi) - math.log10(x_lo)) / (z_hi - z_lo)
+    c0 = math.log10(x_lo) - z_lo * s0
+
+    def curve(params: np.ndarray) -> np.ndarray:
+        c, s = params
+        return asymptote / (1.0 + np.exp(-(x - c) / s))
+
+    def residuals(params: np.ndarray) -> np.ndarray:
+        rates = curve(params)
+        return np.array(
+            [
+                (shares[lo] * rates[lo]).sum() / shares[lo].sum() - under_50k,
+                (shares[hi] * rates[hi]).sum() / shares[hi].sum() - at_150k_plus,
+            ]
+        )
+
+    solution = least_squares(residuals, x0=np.array([c0, s0]), xtol=1e-14, ftol=1e-14)
+    rates = curve(solution.x)
+    if float(np.max(np.abs(residuals(solution.x)))) > 1e-9:
+        raise ValueError(
+            f"ownership curve did not reproduce the LIMRA anchors: {residuals(solution.x)}"
+        )
+    if not np.all(np.diff(rates) > 0):
+        raise ValueError("ownership curve is not monotone in income")
+    return [round(float(r), 6) for r in rates]
 
 
-def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
+def _zscore(column: str) -> pl.Expr:
+    """Standardise a column across counties (mean 0, sample sd 1)."""
+    return (pl.col(column) - pl.col(column).mean()) / pl.col(column).std()
+
+
+def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
     """Fetch everything and return the assembled county metric matrix."""
+    if cfg is None:
+        cfg = load_config()
     pep = popest.fetch_popest(manifest)
     acs = _acs_wide(manifest)
     geo = fetch_geography(manifest)
@@ -108,7 +174,7 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     df = df.join(irs, on="fips", how="left")
     owner_with_mort = pl.col("B25027_E008") + pl.col("B25027_E009")
     df = df.with_columns(
-        spouse_share_60plus=pl.when(pl.col("B09021_E022") > 0)
+        spouse_share_65plus=pl.when(pl.col("B09021_E022") > 0)
         .then(pl.col("B09021_E024") / pl.col("B09021_E022"))
         .otherwise(None),
         mortgage_share_65_owners=pl.when(owner_total > 0)
@@ -117,9 +183,13 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     )
 
     # ---- Reachability -----------------------------------------------------
+    # "With an internet subscription" = dial-up alone + broadband (B28005_016
+    # and _017 for the 65+ block).
     df = df.with_columns(
         internet_65plus=pl.when(pl.col("B28005_E014") > 0)
-        .then(pl.col("B28005_E017") / pl.col("B28005_E014"))
+        .then(
+            (pl.col("B28005_E016") + pl.col("B28005_E017")) / pl.col("B28005_E014"),
+        )
         .otherwise(None),
         density_60plus=pl.when(pl.col("land_sqmi") > 0)
         .then(pl.col("pop_60plus") / pl.col("land_sqmi"))
@@ -134,16 +204,20 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     )
 
     # ---- Insurability (PLACES crude prevalence composites) ----------------
+    # Each composite is the mean of per-measure z-scores across counties, so a
+    # high-prevalence measure (BPHIGH) does not outweigh a low-prevalence one
+    # (CANCER) purely because of its scale. A county missing any constituent
+    # measure gets no composite at all rather than a partial one.
     df = df.join(places, on="fips", how="left")
     chronic_cols = [m.lower() for m in CHRONIC_MEASURES]
     risk_cols = [m.lower() for m in RISK_MEASURES]
     df = df.with_columns(
-        _chronic_raw=pl.mean_horizontal([pl.col(c) for c in chronic_cols]),
-        _risk_raw=pl.mean_horizontal([pl.col(c) for c in risk_cols]),
+        _chronic_z=pl.mean_horizontal([_zscore(c) for c in chronic_cols], ignore_nulls=False),
+        _risk_z=pl.mean_horizontal([_zscore(c) for c in risk_cols], ignore_nulls=False),
     )
     df = df.with_columns(
-        chronic_burden_composite=pl.col("_chronic_raw"),
-        risk_behaviour_composite=pl.col("_risk_raw"),
+        chronic_burden_composite=pl.col("_chronic_z"),
+        risk_behaviour_composite=pl.col("_risk_z"),
     )
 
     # ---- BEA wealth proxy (per capita) -----------------------------------
@@ -185,7 +259,17 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     )
 
     # ---- Synthetic priors (modelled, never scored) ------------------------
-    rates = _income_band_ownership_rates()
+    limra = cfg.priors["limra_barometer_2026"]
+    curve = limra["curve"]
+    rates = _income_band_ownership_rates(
+        band_midpoints_k=[float(v) for v in curve["band_midpoints_k"]],
+        band_shares=[float(v) for v in curve["national_band_shares"]],
+        under_50k=float(limra["under_50k"]),
+        at_150k_plus=float(limra["at_150k_plus"]),
+        asymptote=float(curve["asymptote"]),
+        under_50k_max_k=float(curve["under_50k_max_k"]),
+        at_150k_plus_min_k=float(curve["at_150k_plus_min_k"]),
+    )
     band_exprs = [pl.col(f"B19037_E{i:03d}") for i in range(54, 70)]
     total_65_hh = pl.col("B19037_E053")
     ownership_numerator = pl.sum_horizontal(
@@ -198,7 +282,10 @@ def build_metric_matrix(manifest: Manifest) -> pl.DataFrame:
     )
     df = df.with_columns(
         coverage_gap_households_60=total_65_hh * (1 - pl.col("expected_ownership_65")),
-        area_health_context=pl.col("_chronic_raw"),
+        # Context only: self-reported poor physical or mental health, 18+.
+        area_health_context=pl.mean_horizontal(
+            [pl.col("mhlth"), pl.col("phlth")], ignore_nulls=False
+        ),
     )
 
     return df

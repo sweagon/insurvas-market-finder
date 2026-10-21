@@ -71,7 +71,7 @@ check_untyped_defs = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["pdfplumber.*", "docx.*", "duckdb.*", "yaml.*"]
+module = ["pdfplumber.*", "docx.*", "duckdb.*", "yaml.*", "scipy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
