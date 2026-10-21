@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-10-21T02:10:34.593143+00:00",
+  "built_at": "2026-10-21T03:28:09.321007+00:00",
   "config_version": 3,
   "config_hash": "82d13eb9a78e86af",
   "vintages": {
@@ -23,5 +23,5 @@
   "mc_draws": 500,
   "eligibility_min_60plus": 2000,
   "target_age_min": 60,
-  "duration_s": 47.4
+  "duration_s": 38.7
 }
