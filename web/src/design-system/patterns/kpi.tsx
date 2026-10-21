@@ -1,37 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "../cn";
 import { Info } from "../icons";
+import { prefersReducedMotion } from "../tokens/motion";
 
-/** Count-up hook honoring reduced motion (B.7). */
+/** True when the user has opted into reduced motion in the app settings. */
+function reduceMotionEnabled(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.dataset.reduceMotion === "1";
+}
+
+/**
+ * Count-up hook honoring reduced motion (B.7).
+ *
+ * The reduced-motion check is made during render so the final value can be
+ * returned directly; the animation itself only writes state from a
+ * `requestAnimationFrame` callback, never synchronously from an effect.
+ */
 export function useCountUp(target: number | null, duration = 600, disabled = false): number | null {
   const [value, setValue] = useState(target ?? 0);
-  const ref = useRef<number>(target ?? 0);
+  const fromRef = useRef<number>(target ?? 0);
+  const reduced = disabled || prefersReducedMotion() || reduceMotionEnabled();
+
   useEffect(() => {
-    if (target == null) return setValue(0);
-    const reduce =
-      disabled ||
-      (typeof window !== "undefined" &&
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) ||
-      document.documentElement.dataset.reduceMotion === "1";
-    if (reduce) {
-      ref.current = target;
-      setValue(target);
-      return;
-    }
+    if (target == null || reduced) return;
     const start = performance.now();
-    const from = ref.current;
+    const from = fromRef.current;
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
       const v = from + (target - from) * eased;
+      fromRef.current = v;
       setValue(v);
       if (t < 1) raf = requestAnimationFrame(tick);
-      else ref.current = target;
+      else fromRef.current = target;
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, duration, disabled]);
+  }, [target, duration, reduced]);
+
+  if (target == null) return 0;
+  if (reduced) return target;
   return value;
 }
 
@@ -83,17 +92,17 @@ export function KpiCard({ label, value, info, delta, sparkline, link, className 
 /** KPI strip (R3): 4 cells with hairline dividers; wraps 4/2/1 by container. */
 export function KpiStrip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 divide-y divide-subtle rounded-card border border-subtle bg-surface1 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+    <div className="grid grid-cols-2 divide-x divide-y divide-subtle overflow-hidden rounded-card border border-subtle bg-surface1 sm:divide-y-0 lg:grid-cols-4">
       {children}
     </div>
   );
 }
 
-export function KpiCell({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
+export function KpiCell({ label, value, children, valueClassName }: { label: string; value: string; children?: React.ReactNode; valueClassName?: string }) {
   return (
-    <div className="p-[var(--card-pad)]">
+    <div className="min-w-0 p-[var(--card-pad)]">
       <p className="text-micro uppercase text-tertiary">{label}</p>
-      <p className="mt-1.5 num text-num-lg text-primary">{value}</p>
+      <p className={cn("mt-1.5 num text-num-lg text-primary whitespace-nowrap", valueClassName)}>{value}</p>
       {children && <div className="mt-1.5">{children}</div>}
     </div>
   );

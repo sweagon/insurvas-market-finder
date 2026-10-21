@@ -1,0 +1,151 @@
+import { useMemo, useState } from "react";
+import { useStore } from "../state/store";
+import { PageHeader } from "../design-system/patterns/PageHeader";
+import { Card } from "../design-system/primitives/Card";
+import { SegmentedControl } from "../design-system/primitives/tabs";
+import { usePreferences } from "../design-system/providers/PreferencesProvider";
+import { opportunityColor } from "../design-system/map/ramp";
+import { popCompact, score, stateAbbr } from "../state/format";
+import { SUBSCORE_LABEL } from "../state/lensMeta";
+import type { CountyRow, LensId } from "../data/types";
+
+type AxisId = "pop60" | "total" | "size" | "affordability" | "need" | "reachability" | "whitespace" | "insurability";
+
+const AXES: { id: AxisId; label: string; log?: boolean }[] = [
+  { id: "pop60", label: "60+ population", log: true },
+  { id: "total", label: "Opportunity score" },
+  { id: "size", label: SUBSCORE_LABEL.size },
+  { id: "affordability", label: SUBSCORE_LABEL.affordability },
+  { id: "need", label: SUBSCORE_LABEL.need },
+  { id: "reachability", label: SUBSCORE_LABEL.reachability },
+  { id: "whitespace", label: SUBSCORE_LABEL.whitespace },
+  { id: "insurability", label: SUBSCORE_LABEL.insurability },
+];
+
+function valueOf(c: CountyRow, lens: LensId, axis: AxisId): number {
+  if (axis === "pop60") return c.pop60;
+  if (axis === "total") return c.scores[lens].total;
+  return c.scores[lens].subscores?.[axis] ?? 0;
+}
+
+const W = 1000;
+const H = 520;
+const PAD = { l: 64, r: 24, t: 24, b: 48 };
+
+export default function Scatter() {
+  const { counties, lens, select, selectedFips } = useStore();
+  const { theme, palette } = usePreferences();
+  const [xAxis, setXAxis] = useState<AxisId>("pop60");
+  const [yAxis, setYAxis] = useState<AxisId>("total");
+  const [hover, setHover] = useState<{ fips: string; x: number; y: number } | null>(null);
+
+  const list = useMemo(() => counties.filter((c) => c.scores?.[lens]?.eligible), [counties, lens]);
+  const xMeta = AXES.find((a) => a.id === xAxis)!;
+  const yMeta = AXES.find((a) => a.id === yAxis)!;
+
+  const domain = (axis: AxisId, meta: { log?: boolean }) => {
+    const vals = list.map((c) => valueOf(c, lens, axis)).filter((v) => Number.isFinite(v) && v > 0);
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    if (meta.log) return [Math.log10(Math.max(1, lo)), Math.log10(Math.max(10, hi))] as const;
+    return [Math.max(0, Math.floor(lo / 10) * 10), Math.ceil(hi / 10) * 10] as const;
+  };
+  const [x0, x1] = domain(xAxis, xMeta);
+  const [y0, y1] = domain(yAxis, yMeta);
+  const sx = (v: number) => PAD.l + ((xMeta.log ? Math.log10(Math.max(1, v)) : v) - x0) / (x1 - x0 || 1) * (W - PAD.l - PAD.r);
+  const sy = (v: number) => H - PAD.b - ((yMeta.log ? Math.log10(Math.max(1, v)) : v) - y0) / (y1 - y0 || 1) * (H - PAD.t - PAD.b);
+  const color = (s: number) => opportunityColor(s / 100, { theme, colorblind: palette === "colorblind" });
+
+  const xTicks = Array.from({ length: 5 }, (_, i) => x0 + (i / 4) * (x1 - x0));
+  const yTicks = Array.from({ length: 5 }, (_, i) => y0 + (i / 4) * (y1 - y0));
+  const fmt = (v: number, meta: { log?: boolean; id: AxisId }) => {
+    const raw = meta.log ? Math.pow(10, v) : v;
+    return meta.id === "pop60" ? popCompact(raw) : score(raw);
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="Scatter Explorer"
+        description="Each dot is an eligible county. Find big pools with weak competition, or high-need areas with low coverage."
+      />
+      <div className="space-y-4 p-4 md:p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-caption text-tertiary">X</span>
+            <select value={xAxis} onChange={(e) => setXAxis(e.target.value as AxisId)} className="h-9 rounded-control border border-default bg-surface1 px-2 text-body-sm text-primary">
+              {AXES.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-caption text-tertiary">Y</span>
+            <select value={yAxis} onChange={(e) => setYAxis(e.target.value as AxisId)} className="h-9 rounded-control border border-default bg-surface1 px-2 text-body-sm text-primary">
+              {AXES.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+            </select>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-caption text-tertiary">Colour</span>
+            <SegmentedControl value="score" onValueChange={() => {}} options={[{ value: "score", label: "Score" }]} />
+          </div>
+        </div>
+
+        <Card bodyClassName="p-2">
+          <div className="relative">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${yMeta.label} against ${xMeta.label} for eligible counties`}>
+              {yTicks.map((t, i) => (
+                <g key={`y${i}`}>
+                  <line x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} stroke="var(--border-subtle)" />
+                  <text x={PAD.l - 8} y={sy(t) + 4} textAnchor="end" fontSize="11" fill="var(--text-tertiary)">{fmt(t, yMeta)}</text>
+                </g>
+              ))}
+              {xTicks.map((t, i) => (
+                <g key={`x${i}`}>
+                  <line x1={sx(t)} x2={sx(t)} y1={PAD.t} y2={H - PAD.b} stroke="var(--border-subtle)" />
+                  <text x={sx(t)} y={H - PAD.b + 16} textAnchor="middle" fontSize="11" fill="var(--text-tertiary)">{fmt(t, xMeta)}</text>
+                </g>
+              ))}
+              <line x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b} y2={H - PAD.b} stroke="var(--border-strong)" />
+              <line x1={PAD.l} x2={PAD.l} y1={PAD.t} y2={H - PAD.b} stroke="var(--border-strong)" />
+              <text x={(W + PAD.l) / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--text-secondary)">{xMeta.label}</text>
+              <text x={14} y={(H - PAD.b + PAD.t) / 2} textAnchor="middle" fontSize="12" fill="var(--text-secondary)" transform={`rotate(-90 14 ${(H - PAD.b + PAD.t) / 2})`}>{yMeta.label}</text>
+
+              {list.map((c) => {
+                const s = c.scores[lens];
+                const isSel = selectedFips === c.fips;
+                return (
+                  <circle
+                    key={c.fips}
+                    cx={sx(valueOf(c, lens, xAxis))}
+                    cy={sy(valueOf(c, lens, yAxis))}
+                    r={isSel ? 5 : 2.4}
+                    fill={isSel ? "var(--text-primary)" : color(s.total)}
+                    stroke={isSel ? "var(--accent)" : "none"}
+                    strokeWidth={isSel ? 2 : 0}
+                    opacity={isSel ? 1 : 0.75}
+                    className="cursor-pointer"
+                    onMouseEnter={(e) => {
+                      const box = (e.target as SVGCircleElement).ownerSVGElement?.getBoundingClientRect();
+                      setHover({ fips: c.fips, x: e.clientX - (box?.left ?? 0), y: e.clientY - (box?.top ?? 0) });
+                    }}
+                    onMouseLeave={() => setHover(null)}
+                    onClick={() => select(c.fips)}
+                  />
+                );
+              })}
+            </svg>
+            {hover && (() => {
+              const c = counties.find((x) => x.fips === hover.fips)!;
+              return (
+                <div className="pointer-events-none absolute z-tooltip rounded-control border border-default bg-surface1 px-2 py-1 text-caption shadow-l3" style={{ left: hover.x + 12, top: hover.y + 12 }}>
+                  <div className="text-primary">{c.name}, {stateAbbr(c.state)}</div>
+                  <div className="text-tertiary">{xMeta.label} {xAxis === "pop60" ? popCompact(valueOf(c, lens, xAxis)) : score(valueOf(c, lens, xAxis))} · score {score(c.scores[lens].total)}</div>
+                </div>
+              );
+            })()}
+          </div>
+        </Card>
+        <p className="text-caption text-tertiary">{list.length.toLocaleString()} eligible counties plotted. Click a dot to open its profile.</p>
+      </div>
+    </div>
+  );
+}

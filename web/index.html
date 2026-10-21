@@ -16,7 +16,7 @@
       (function () {
         try {
           var t = localStorage.getItem("insurvas.theme");
-          if (!t) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          if (!t) t = "dark";
           document.documentElement.dataset.theme = t;
           var d = localStorage.getItem("insurvas.density");
           if (d) document.documentElement.dataset.density = d;

@@ -19,7 +19,7 @@ export function useUrlSync(): void {
     hydrated.current = true;
     const q = new URLSearchParams(window.location.search);
     const l = q.get("lens");
-    if (l && (LENS_ORDER as string[]).includes(l)) setLens(l as LensId);
+    if (l && (LENS_ORDER as readonly string[]).includes(l)) setLens(l as LensId);
     const area = q.get("area");
     if (area) select(area);
     const states = q.get("states");

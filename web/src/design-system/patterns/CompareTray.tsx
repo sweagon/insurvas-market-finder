@@ -2,6 +2,7 @@ import { useStore } from "../../state/store";
 import { Button } from "../primitives/Button";
 import { Monogram } from "../primitives/badges";
 import { X } from "../icons";
+import { stateAbbr } from "../../state/format";
 
 /** Sticky bottom tray holding up to four selected areas (D.7). */
 export function CompareTray() {
@@ -20,7 +21,7 @@ export function CompareTray() {
         <div className="flex items-center gap-1.5">
           {items.map((c) => (
             <span key={c.fips} className="inline-flex items-center gap-1.5 rounded-pill bg-surface2 pl-0.5 pr-1.5 py-0.5">
-              <Monogram abbr={c.state} size={22} />
+              <Monogram abbr={stateAbbr(c.state)} size={22} />
               <span className="max-w-24 truncate text-caption text-primary">{c.name}</span>
               <button
                 type="button"

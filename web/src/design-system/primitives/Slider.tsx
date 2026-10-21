@@ -46,7 +46,7 @@ export function Slider({
         className="relative flex w-full touch-none items-center"
         {...rest}
       >
-        <SliderPrimitive.Track className="relative h-1 w-full grow rounded-pill bg-surface3">
+        <SliderPrimitive.Track className="relative h-1.5 w-full grow rounded-pill border border-subtle bg-surface2">
           <SliderPrimitive.Range className="absolute h-full rounded-pill bg-accent" />
         </SliderPrimitive.Track>
         {value.map((_, i) => (

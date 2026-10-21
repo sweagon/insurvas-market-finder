@@ -44,7 +44,6 @@ export function Choropleth({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 960, h: 600 });
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
-  const boundsRef = useRef<{ scale: number; tx: number; ty: number }>({ scale: 1, tx: 0, ty: 0 });
 
   const path = useMemo(() => {
     const identity = geoIdentity().reflectY(false);
@@ -60,7 +59,6 @@ export function Choropleth({
     const ty = (size.h - bh * scale) / 2 - bbox[1] * scale;
     return { scale, tx, ty };
   }, [bbox, size]);
-  boundsRef.current = fit;
 
   useEffect(() => {
     const el = wrapRef.current;

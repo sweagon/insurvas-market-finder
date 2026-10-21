@@ -1,10 +1,11 @@
 import { cn } from "../cn";
 import { Download, Filter, Menu, Search, Share2, Settings } from "../icons";
 import { useStore } from "../../state/store";
+import { LENS_ORDER } from "../../state/lensMeta";
 import { ThemeToggle } from "./ThemeToggle";
 import { LensSwitcher } from "./LensSwitcher";
 import { Button } from "../primitives/Button";
-import { Tooltip } from "../primitives/overlays";
+import { Tooltip } from "../primitives/tooltip";
 
 /**
  * Top bar (C.1), 56px. Breadcrumb, lens switcher, search with a Cmd/Ctrl+K
@@ -25,10 +26,10 @@ export function TopBar({
   onOpenSettings: () => void;
   onOpenMobileNav: () => void;
 }) {
-  const { view, setView } = useStore();
+  const { view, setView, lens, setLens, catalog } = useStore();
 
   return (
-    <header className="sticky top-0 z-sticky flex h-14 items-center gap-3 border-b border-subtle bg-surface1/90 px-3 backdrop-blur md:px-5">
+    <header className="sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-3 overflow-hidden border-b border-subtle bg-surface1/90 px-3 backdrop-blur md:px-5">
       <button
         type="button"
         onClick={onOpenMobileNav}
@@ -50,6 +51,18 @@ export function TopBar({
         <div className="hidden xl:block">
           <LensSwitcher />
         </div>
+        <label className="xl:hidden">
+          <span className="sr-only">Strategy lens</span>
+          <select
+            value={lens}
+            onChange={(e) => setLens(e.target.value as typeof lens)}
+            className="h-control max-w-32 rounded-control border border-default bg-surface2 px-2 text-body-sm text-primary"
+          >
+            {LENS_ORDER.map((l) => (
+              <option key={l} value={l}>{catalog?.lenses?.[l]?.label ?? l}</option>
+            ))}
+          </select>
+        </label>
 
         <button
           type="button"

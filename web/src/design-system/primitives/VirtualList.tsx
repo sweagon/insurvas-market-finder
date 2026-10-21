@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "../cn";
 
 export interface VirtualListProps<T> {
@@ -31,13 +31,15 @@ export function VirtualList<T>({
     if (ref.current) setScrollTop(ref.current.scrollTop);
   }, []);
 
-  useEffect(() => {
-    setScrollTop(ref.current?.scrollTop ?? 0);
-  }, [items]);
-
   const total = items.length;
-  const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
   const visible = Math.ceil(height / itemHeight) + overscan * 2;
+  // Clamp the window so a stale scroll offset (e.g. the list shrank) can never
+  // scroll past the end and render an empty viewport.
+  const maxStart = Math.max(0, total - visible);
+  const start = Math.min(
+    maxStart,
+    Math.max(0, Math.floor(scrollTop / itemHeight) - overscan),
+  );
   const end = Math.min(total, start + visible);
   const slice = items.slice(start, end);
 

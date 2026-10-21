@@ -67,8 +67,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
           "disabled:cursor-not-allowed disabled:opacity-50",
           variant !== "link" && sizes[size],
-          variant === "icon" && "p-0",
-          size === "icon" && "w-10 h-10",
+          size === "icon" && "h-10 w-10 p-0",
           variants[variant],
           className,
         )}
