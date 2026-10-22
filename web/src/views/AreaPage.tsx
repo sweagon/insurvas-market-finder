@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../state/store";
 import { PageHeader } from "../design-system/patterns/PageHeader";
@@ -6,8 +6,10 @@ import { Card } from "../design-system/primitives/Card";
 import { KpiStrip, KpiCell } from "../design-system/patterns/kpi";
 import { RankBadge, ScoreChip, ConfidenceBadge, RobustPickBadge } from "../design-system/primitives/badges";
 import { popCompact, scoreRange, rankRange, topHalf, score, metricValue } from "../state/format";
-import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR } from "../state/lensMeta";
+import { SUBSCORE_ORDER, SUBSCORE_LABEL } from "../state/lensMeta";
 import { MetricLabel } from "../design-system/patterns/MetricLabel";
+import { ChartFrame, RadarChart, SubScoreBars, SubScoreTable, type RadarSeries } from "../design-system/charts";
+import { Button } from "../design-system/primitives/Button";
 
 const HIGHLIGHT_METRICS = [
   "pop_60plus",
@@ -22,6 +24,7 @@ const HIGHLIGHT_METRICS = [
 
 export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
   const { counties, lens, selectedFips, catalog, toggleCompare, compare } = useStore();
+  const [profile, setProfile] = useState<"radar" | "bars">("radar");
   const c = useMemo(() => counties.find((x) => x.fips === selectedFips), [counties, selectedFips]);
   if (!c) return <div className="p-6 text-secondary">Select a county from the map or rankings to view details.</div>;
   const s = c.scores[lens];
@@ -32,6 +35,24 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
   const robust = (s.p_top50 ?? 0) >= 0.8;
   const allMetrics = catalog?.metrics ?? [];
   const metricById = (id: string) => allMetrics.find((m) => m.id === id);
+  const axes = SUBSCORE_ORDER.map((ss) => ({ id: ss, label: SUBSCORE_LABEL[ss] }));
+  const stateAverage = SUBSCORE_ORDER.map((ss) => {
+    const values = counties
+      .filter((x) => x.state === c.state)
+      .map((x) => x.scores[lens].subscores?.[ss])
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : NaN;
+  });
+  const profileSeries: RadarSeries[] = [
+    {
+      id: "area",
+      label: c.name,
+      color: "#5D8647",
+      values: SUBSCORE_ORDER.map((ss) => s.subscores?.[ss] ?? NaN),
+    },
+    { id: "state", label: `${c.state} average`, color: "#0072B2", values: stateAverage },
+    { id: "us", label: "US median", color: "#8A8378", values: SUBSCORE_ORDER.map(() => 50) },
+  ];
   const strongest = [...SUBSCORE_ORDER]
     .filter((ss) => s.subscores?.[ss] != null)
     .sort((a, b) => (s.subscores?.[b] ?? 0) - (s.subscores?.[a] ?? 0))
@@ -65,24 +86,29 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
         </KpiStrip>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card title="Sub-scores">
-            <div className="space-y-2.5">
-              {SUBSCORE_ORDER.map((ss) => {
-                const v = s.subscores?.[ss] ?? null;
-                return (
-                  <div key={ss}>
-                    <div className="mb-1 flex items-center justify-between text-body-sm">
-                      <span style={{ color: SUBSCORE_COLOR[ss] }}>{SUBSCORE_LABEL[ss]}</span>
-                      <span className="num text-primary">{score(v)}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-pill bg-surface3" role="img" aria-label={v == null ? `${SUBSCORE_LABEL[ss]} unavailable` : `${SUBSCORE_LABEL[ss]} ${Math.round(v)} of 100`}>
-                      <div className="h-full rounded-pill" style={{ width: `${Math.max(0, Math.min(100, v ?? 0))}%`, background: SUBSCORE_COLOR[ss] }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
+          <ChartFrame
+            title="Sub-score profile"
+            subtitle="Percentile within the US · six fixed axes"
+            vintage="ACS 2020–2024"
+            summary={`${c.name} scores highest on ${strongest.length ? SUBSCORE_LABEL[strongest[0]] : "no sub-score"}. The radar and bars show the same six values; the table lists them exactly.`}
+            table={<SubScoreTable axes={axes} series={profileSeries} />}
+            actions={
+              <div className="flex rounded-control border border-subtle p-0.5">
+                <Button size="sm" variant={profile === "radar" ? "secondary" : "ghost"} aria-pressed={profile === "radar"} onClick={() => setProfile("radar")}>
+                  Radar
+                </Button>
+                <Button size="sm" variant={profile === "bars" ? "secondary" : "ghost"} aria-pressed={profile === "bars"} onClick={() => setProfile("bars")}>
+                  Bars
+                </Button>
+              </div>
+            }
+          >
+            {profile === "radar" ? (
+              <RadarChart axes={axes} series={profileSeries} height={300} ariaLabel={`Sub-score radar for ${c.name}`} />
+            ) : (
+              <SubScoreBars axes={axes} series={profileSeries} className="py-2" />
+            )}
+          </ChartFrame>
 
           <Card title="Why this area ranks here">
             <p className="text-body-sm text-secondary">
