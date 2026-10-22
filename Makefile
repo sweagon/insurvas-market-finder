@@ -29,9 +29,10 @@ build: ## Build the scored dataset, QA report and SPA snapshots
 	cd web && npm run topo
 
 .PHONY: build-data
-build-data: ## Build only the data artefacts (no topo/parity)
+build-data: ## Build data, QA and the generated web catalogue (no topo)
 	uv run python -m pipeline.build
 	uv run python -m pipeline.qa.report
+	uv run python -m tests.parity.generate
 
 .PHONY: web
 web: ## Build the production SPA bundle
