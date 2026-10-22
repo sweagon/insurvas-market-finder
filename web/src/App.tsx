@@ -6,6 +6,7 @@ import { Sidebar } from "./design-system/patterns/Sidebar";
 import { TopBar } from "./design-system/patterns/TopBar";
 import { BottomTabBar } from "./design-system/patterns/BottomTabBar";
 import { CompareTray } from "./design-system/patterns/CompareTray";
+import { StaleDataBanner } from "./design-system/patterns/StaleDataBanner";
 import { EmptyState } from "./design-system/patterns/states";
 import { Monogram, RankBadge, ScoreChip } from "./design-system/primitives/badges";
 import { stateAbbr, popCompact } from "./state/format";
@@ -120,6 +121,7 @@ function Shell() {
         />
       </header>
       <main className="relative col-start-2 row-start-2 min-w-0 overflow-auto pb-14 lg:pb-0">
+        <StaleDataBanner />
         <Suspense fallback={<EmptyState title="Loading view" reason="Preparing module" />}>
           {view === "explore" && <Explore />}
           {view === "rankings" && <Rankings />}

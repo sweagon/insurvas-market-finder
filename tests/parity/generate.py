@@ -16,6 +16,7 @@ JSON; the TypeScript test maps ``null`` back to ``NaN``.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 
@@ -23,6 +24,7 @@ import numpy as np
 
 from pipeline import paths
 from pipeline.config import load_config
+from pipeline.flags import FLAG_COLS, FLAG_DESCRIPTION, METRIC_FLAGS
 from pipeline.score.reference import score_matrix
 
 OUT = paths.ROOT / "tests" / "parity"
@@ -167,52 +169,35 @@ def _export_web_catalog(cfg) -> None:
     types. It is generated from config/metrics.yaml, so a model change cannot
     leave the frontend's unions or labels stale.
     """
-    flags = [
-        "shrunk_agencies",
-        "shrunk_chronic",
-        "shrunk_risk",
-        "imputed_ssa_share",
-        "shrunk_ssa_share",
-    ]
+    flags = list(FLAG_COLS)
     out = {
         "version": cfg.version,
+        "config_hash": hashlib.sha256(paths.METRICS_YAML.read_bytes()).hexdigest()[:16],
         "default_lens": cfg.default_lens_id,
         "lens_order": cfg.lens_ids(),
         "subscore_order": cfg.sub_score_ids(),
         "units": sorted({m.unit for m in cfg.metrics}),
         "flags": flags,
+        "flag_descriptions": {f: FLAG_DESCRIPTION[f] for f in flags},
         "subscores": {
-            sid: {
-                "label": s.short_label or s.label,
-                "long_label": s.label,
-                "description": s.description,
-            }
+            sid: {"label": s.short_label or s.label}
             for sid, s in cfg.subscores.items()
         },
         "lenses": {
             lid: {
                 "label": lens.short_label or lens.label,
-                "long_label": lens.label,
-                "description": lens.description,
                 "default": lens.default,
                 "weights": dict(lens.weights),
-                "flip_insurance_sign": lens.flip_insurance_sign,
             }
             for lid, lens in cfg.lenses.items()
         },
+        # Identity only: labels, descriptions, units and sources are served in
+        # meta.json, so duplicating them here would bloat the initial bundle.
         "metrics": [
             {
                 "id": m.id,
-                "label": m.label,
-                "description": m.description,
                 "subscore": m.subscore,
-                "source": m.source,
-                "unit": m.unit,
-                "vintage": m.vintage,
-                "direction": m.direction,
-                "scored": m.scored,
-                "modeled": m.modeled,
-                "lens_weights": dict(m.lens_weights),
+                "flags": list(METRIC_FLAGS.get(m.id, ())),
             }
             for m in cfg.metrics
         ],

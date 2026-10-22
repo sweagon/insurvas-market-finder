@@ -16,6 +16,7 @@ import pytest
 
 from pipeline import paths
 from pipeline.config import load_config
+from pipeline.flags import METRIC_FLAGS
 
 WEB = paths.WEB
 CATALOG = WEB / "src" / "data" / "catalog.generated.json"
@@ -56,18 +57,26 @@ def _config_hash() -> str:
 
 def test_catalogue_is_generated_from_the_current_config(cfg, catalog) -> None:
     assert catalog["version"] == cfg.version
+    assert catalog["config_hash"] == _config_hash()
     assert catalog["lens_order"] == cfg.lens_ids()
     assert catalog["subscore_order"] == cfg.sub_score_ids()
     assert catalog["default_lens"] == cfg.default_lens_id
     assert [m["id"] for m in catalog["metrics"]] == [m.id for m in cfg.metrics]
 
 
-def test_every_metric_has_a_ui_description(cfg, catalog, meta) -> None:
-    descriptions = {m["id"]: m["description"] for m in catalog["metrics"]}
-    meta_descriptions = {m["id"]: m["description"] for m in meta["metrics"]}
+def test_metric_estimate_flags_are_consistent(cfg, catalog, meta) -> None:
+    catalogue = {m["id"]: m["flags"] for m in catalog["metrics"]}
+    served = {m["id"]: m["flags"] for m in meta["metrics"]}
     for metric in cfg.metrics:
-        assert descriptions.get(metric.id), f"{metric.id} has no catalogue description"
-        assert meta_descriptions.get(metric.id), f"{metric.id} has no meta description"
+        expected = list(METRIC_FLAGS.get(metric.id, ()))
+        assert catalogue[metric.id] == expected
+        assert served[metric.id] == expected
+
+
+def test_every_metric_has_a_ui_description(cfg, meta) -> None:
+    descriptions = {m["id"]: m["description"] for m in meta["metrics"]}
+    for metric in cfg.metrics:
+        assert descriptions.get(metric.id), f"{metric.id} has no meta description"
 
 
 def test_catalogue_and_meta_agree(cfg, catalog, meta) -> None:

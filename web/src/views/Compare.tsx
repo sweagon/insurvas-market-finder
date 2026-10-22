@@ -5,6 +5,9 @@ import { Card } from "../design-system/primitives/Card";
 import { RankBadge, ScoreChip, Monogram } from "../design-system/primitives/badges";
 import { popCompact, scoreRange, score, stateAbbr, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR, LENS_COLOR } from "../state/lensMeta";
+import { MetricLabel } from "../design-system/patterns/MetricLabel";
+import { estimateFlag } from "../state/estimate";
+import { FLAG_DESCRIPTIONS } from "../data/types";
 import type { CountyRow } from "../data/types";
 
 const KEY_METRICS = [
@@ -120,10 +123,19 @@ export default function Compare() {
                       if (!m) return null;
                       return (
                         <tr key={id}>
-                          <td className="py-2 text-tertiary">{m.label}</td>
-                          {items.map((c) => (
-                            <td key={c.fips} className="num py-2 text-right text-secondary">{metricValue(m.unit, c.metrics?.[id] as number, { compact: true })}</td>
-                          ))}
+                          <td className="py-2 text-tertiary"><MetricLabel metric={m} /></td>
+                          {items.map((c) => {
+                            const flag = estimateFlag(m, c);
+                            return (
+                              <td key={c.fips} className="num py-2 text-right text-secondary">
+                                {metricValue(m.unit, c.metrics?.[id] as number, { compact: true })}
+                                {flag && (
+                                  <span title={FLAG_DESCRIPTIONS[flag]} className="ml-1 text-warning" aria-label="Estimate">
+                                    •</span>
+                                )}
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })}

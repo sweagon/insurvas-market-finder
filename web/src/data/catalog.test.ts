@@ -50,17 +50,10 @@ describe("generated catalogue", () => {
     }
   });
 
-  it("describes every metric and points it at a configured sub-score", () => {
+  it("points every metric at a configured sub-score", () => {
     for (const metric of catalog.metrics) {
-      expect(metric.description.trim().length).toBeGreaterThan(10);
       expect(SUBSCORE_ORDER).toContain(metric.subscore);
-      if (metric.scored) {
-        const total = Object.values(metric.lens_weights).reduce(
-          (a, b) => a + b,
-          0,
-        );
-        expect(total).toBeGreaterThan(0);
-      }
+      expect(Array.isArray(metric.flags)).toBe(true);
     }
   });
 

@@ -3,7 +3,7 @@ import { Card } from "../design-system/primitives/Card";
 import { useStore } from "../state/store";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL } from "../state/lensMeta";
 import { LENS_ORDER } from "../state/lensMeta";
-import type { LensId, LensInfo, SubScoreId, SubScoreMeta } from "../data/types";
+import type { LensId, LensInfo, MetricMeta, SubScoreId, SubScoreMeta } from "../data/types";
 
 const NO_SUBSCORES: Partial<Record<SubScoreId, SubScoreMeta>> = {};
 const NO_LENSES: Partial<Record<LensId, LensInfo>> = {};
@@ -18,6 +18,7 @@ export default function Methodology() {
   const vintages = catalog?.vintages ?? meta?.vintages ?? {};
   const sources = Object.values(catalog?.sources ?? {});
   const r7 = catalog?.rule_R7 ?? "";
+  const metrics: MetricMeta[] = catalog?.metrics ?? [];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -26,7 +27,7 @@ export default function Methodology() {
         description="How the ranking is built, what is measured, and the guardrails that keep protected attributes out of the model."
         meta={
           meta?.built_at
-            ? `Build ${new Date(meta.built_at).toLocaleDateString("en-US", { dateStyle: "medium" })} · config v${meta.config_version} · ${meta.counties?.toLocaleString()} counties · ${meta.eligible?.toLocaleString()} eligible`
+            ? `Build ${new Date(meta.built_at).toLocaleDateString("en-US", { dateStyle: "medium" })} · config v${meta.config_version} (${meta.config_hash?.slice(0, 8)}) · ${meta.counties?.toLocaleString()} counties · ${meta.eligible?.toLocaleString()} eligible`
             : undefined
         }
       />
@@ -62,6 +63,35 @@ export default function Methodology() {
                 </div>
               ))}
             </dl>
+          </Card>
+
+          <Card title="Metric definitions" info="Every served metric, its source, vintage and role in the model." className="lg:col-span-2">
+            <div className="space-y-4">
+              {SUBSCORE_ORDER.map((ss) => {
+                const rows = metrics.filter((m) => m.subscore === ss);
+                if (rows.length === 0) return null;
+                return (
+                  <section key={ss}>
+                    <h3 className="mb-2 text-micro uppercase text-tertiary">{SUBSCORE_LABEL[ss]}</h3>
+                    <dl className="grid gap-2 md:grid-cols-2">
+                      {rows.map((m) => (
+                        <div key={m.id} className="rounded-control border border-subtle p-3">
+                          <dt className="flex flex-wrap items-baseline justify-between gap-2 text-body-sm text-primary">
+                            <span>{m.label}</span>
+                            <span className="text-micro uppercase text-tertiary">{m.scored ? "scored" : "context"}</span>
+                          </dt>
+                          <dd className="mt-1 text-caption text-tertiary">{m.description}</dd>
+                          <dd className="mt-1.5 text-micro uppercase text-tertiary">
+                            {m.source.toUpperCase()} · {m.vintage} · {m.unit}
+                            {m.modeled ? " · modeled" : ""}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </section>
+                );
+              })}
+            </div>
           </Card>
 
           <Card title="R7 guardrails">

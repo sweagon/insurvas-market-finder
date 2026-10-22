@@ -27,6 +27,7 @@ import polars as pl
 from pipeline import paths
 from pipeline.config import load_config
 from pipeline.fetch.http import Manifest
+from pipeline.flags import FLAG_COLS, METRIC_FLAGS
 from pipeline.score.monte_carlo import monte_carlo_total
 from pipeline.score.reference import score_matrix
 from pipeline.transform.geography import STATE_FIPS_TO_USPS
@@ -42,15 +43,6 @@ IDENTITY_COLS = [
     "share_60plus",
     "growth_60plus",
 ]
-
-FLAG_COLS = [
-    "shrunk_agencies",
-    "shrunk_chronic",
-    "shrunk_risk",
-    "imputed_ssa_share",
-    "shrunk_ssa_share",
-]
-
 
 def _config_hash(cfg) -> str:
     raw = paths.METRICS_YAML.read_bytes()
@@ -233,6 +225,7 @@ def _metric_catalog(cfg) -> list[dict]:
             "moe": m.moe,
             "scored": m.scored,
             "modeled": m.modeled,
+            "flags": list(METRIC_FLAGS.get(m.id, ())),
             "caveats": m.caveats,
         }
         for m in cfg.metrics

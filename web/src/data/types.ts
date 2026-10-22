@@ -9,6 +9,8 @@ import catalog from "./catalog.generated.json";
 export type LensId = keyof typeof catalog.lenses;
 export type SubScoreId = keyof typeof catalog.subscores;
 
+export const CATALOG_CONFIG_HASH = catalog.config_hash;
+export const FLAG_DESCRIPTIONS: Record<string, string> = catalog.flag_descriptions;
 export const DEFAULT_LENS = catalog.default_lens as LensId;
 export const LENS_IDS = catalog.lens_order as readonly LensId[];
 export const SUB_SCORE_IDS = catalog.subscore_order as readonly SubScoreId[];
@@ -41,6 +43,8 @@ export interface MetricMeta {
   moe: string;
   scored: boolean;
   modeled: boolean;
+  /** County flags that mark this metric as imputed or shrunk. */
+  flags: string[];
   caveats: string;
 }
 

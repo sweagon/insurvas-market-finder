@@ -6,6 +6,7 @@ import { KpiStrip, KpiCell } from "../design-system/patterns/kpi";
 import { RankBadge, ScoreChip, ConfidenceBadge, RobustPickBadge } from "../design-system/primitives/badges";
 import { popCompact, scoreRange, rankRange, topHalf, score, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR } from "../state/lensMeta";
+import { MetricLabel } from "../design-system/patterns/MetricLabel";
 
 const HIGHLIGHT_METRICS = [
   "pop_60plus",
@@ -126,7 +127,7 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
               return (
                 <div key={id} className="flex items-baseline justify-between gap-3 border-b border-subtle pb-2">
                   <div className="min-w-0">
-                    <div className="truncate text-body-sm text-secondary">{m.label}</div>
+                    <MetricLabel metric={m} county={c} className="text-body-sm text-secondary" />
                     <div className="text-caption text-tertiary">{m.source.toUpperCase()} · {m.vintage}</div>
                   </div>
                   <div className="num shrink-0 text-body text-primary">{metricValue(m.unit, typeof v === "number" ? v : null, { compact: true })}</div>
