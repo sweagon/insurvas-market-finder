@@ -120,3 +120,25 @@
     color: #000;
   }
 }
+
+/*
+ * Print brief: a paper sheet is always light, even when the app is in dark
+ * mode. Re-scope the semantic tokens instead of using raw colours in JSX.
+ */
+.print-sheet {
+  --bg-canvas: #ffffff;
+  --bg-surface-1: #ffffff;
+  --bg-surface-2: #faf8f5;
+  --bg-surface-3: #f0ede8;
+  --border-subtle: rgba(20, 17, 12, 0.09);
+  --border-default: rgba(20, 17, 12, 0.16);
+  --text-primary: #14110c;
+  --text-secondary: #4a443b;
+  --text-tertiary: #6b6459;
+  --accent: #5d8647;
+  --accent-text: #3f6630;
+  --warning: #8a5a00;
+  --warning-subtle: rgba(154, 98, 0, 0.1);
+  background: #ffffff;
+  color: #14110c;
+}

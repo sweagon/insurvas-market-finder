@@ -1,6 +1,8 @@
 import { cn } from "../cn";
 import { Gauge, LayoutGrid, List, MapIcon, Menu } from "../icons";
-import { useStore, type ViewId } from "../../state/store";
+import { useStore } from "../../state/store";
+import { useView } from "../../state/navigation";
+import type { ViewId } from "../../routes";
 
 const ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
   { id: "explore", label: "Explore", icon: <MapIcon size={20} /> },
@@ -11,7 +13,8 @@ const ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
 
 /** Bottom tab bar, phone only: 56px plus safe area, 5 items (C.3). */
 export function BottomTabBar({ onMore }: { onMore: () => void }) {
-  const { view, setView, compare } = useStore();
+  const { compare } = useStore();
+  const { view, setView } = useView();
   return (
     <nav
       aria-label="Primary"

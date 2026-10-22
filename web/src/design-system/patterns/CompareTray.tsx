@@ -1,4 +1,5 @@
 import { useStore } from "../../state/store";
+import { useView } from "../../state/navigation";
 import { Button } from "../primitives/Button";
 import { Monogram } from "../primitives/badges";
 import { X } from "../icons";
@@ -6,7 +7,8 @@ import { stateAbbr } from "../../state/format";
 
 /** Sticky bottom tray holding up to four selected areas (D.7). */
 export function CompareTray() {
-  const { counties, compare, toggleCompare, clearCompare, setView } = useStore();
+  const { counties, compare, toggleCompare, clearCompare } = useStore();
+  const { setView } = useView();
   if (compare.length === 0) return null;
   const items = compare
     .map((f) => counties.find((c) => c.fips === f))

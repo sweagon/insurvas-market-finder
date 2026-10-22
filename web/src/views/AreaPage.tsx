@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useStore } from "../state/store";
 import { PageHeader } from "../design-system/patterns/PageHeader";
 import { Card } from "../design-system/primitives/Card";
@@ -136,6 +137,12 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
             })}
           </div>
         </Card>
+
+        <div className="flex flex-wrap gap-3 text-caption">
+          <Link to={`/area/${c.fips}`} className="text-accenttext hover:underline">Full page</Link>
+          <Link to={`/print/${c.fips}`} className="text-accenttext hover:underline">Print brief</Link>
+          <span className="text-tertiary">Shareable links keep the selected lens and filters.</span>
+        </div>
       </div>
     </div>
   );

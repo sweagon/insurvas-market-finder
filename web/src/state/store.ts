@@ -10,16 +10,6 @@ import {
 } from "../data/types";
 import type { Source } from "../data/load";
 
-export type ViewId =
-  | "explore"
-  | "rankings"
-  | "compare"
-  | "scatter"
-  | "sensitivity"
-  | "methodology"
-  | "area"
-  | "design";
-
 export interface ChartMode {
   profile: "radar" | "bars";
   data: "chart" | "table";
@@ -42,7 +32,6 @@ interface State {
   states: StateRow[];
   lens: LensId;
   weights: SubScoreWeights;
-  view: ViewId;
   selectedFips: string | null;
   compare: string[];
   filters: Filters;
@@ -58,7 +47,6 @@ interface State {
   }) => void;
   setLoadError: (msg: string | null) => void;
   setLens: (l: LensId) => void;
-  setView: (v: ViewId) => void;
   setWeights: (w: SubScoreWeights) => void;
   select: (fips: string | null) => void;
   toggleCompare: (fips: string) => void;
@@ -93,7 +81,6 @@ export const useStore = create<State>((set, get) => ({
   states: [],
   lens: DEFAULT_LENS,
   weights: { ...DEFAULT_WEIGHTS },
-  view: "explore",
   selectedFips: null,
   compare: [],
   filters: { states: [], minPop60: 2000, minScore: 0, query: "", category: "all" },
@@ -115,7 +102,6 @@ export const useStore = create<State>((set, get) => ({
   setLoadError: (loadError) => set({ loadError }),
   setLens: (lens) =>
     set({ lens, weights: weightsFor(lens) }),
-  setView: (view) => set({ view }),
   setWeights: (weights) => set({ weights }),
   select: (selectedFips) => set({ selectedFips }),
   toggleCompare: (fips) =>

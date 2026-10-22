@@ -1,6 +1,7 @@
 import { cn } from "../cn";
 import { Download, Filter, Menu, Search, Share2, Settings } from "../icons";
 import { useStore } from "../../state/store";
+import { useView } from "../../state/navigation";
 import { LENS_ORDER } from "../../state/lensMeta";
 import { ThemeToggle } from "./ThemeToggle";
 import { LensSwitcher } from "./LensSwitcher";
@@ -28,7 +29,8 @@ export function TopBar({
   onOpenSettings: () => void;
   onOpenMobileNav: () => void;
 }) {
-  const { view, setView, lens, setLens, catalog } = useStore();
+  const { lens, setLens, catalog } = useStore();
+  const { view, setView } = useView();
   const { theme } = usePreferences();
 
   return (

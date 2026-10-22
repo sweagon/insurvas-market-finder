@@ -8,7 +8,9 @@ import {
   PanelLeft,
   Table2,
 } from "../icons";
-import { useStore, type ViewId } from "../../state/store";
+import { useStore } from "../../state/store";
+import { useView } from "../../state/navigation";
+import type { ViewId } from "../../routes";
 import { usePreferences } from "../providers/PreferencesProvider";
 import { Brand } from "./Brand";
 
@@ -36,7 +38,8 @@ const REFERENCE: NavItem[] = [
  * the light theme is an option (R5). Groups use `micro` headers.
  */
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
-  const { view, setView, compare, catalog, source } = useStore();
+  const { compare, catalog, source } = useStore();
+  const { view, setView } = useView();
   const { sidebarTone, setSidebarTone } = usePreferences();
   const dark = sidebarTone === "dark" && (typeof document === "undefined" || document.documentElement.dataset.theme !== "light");
 

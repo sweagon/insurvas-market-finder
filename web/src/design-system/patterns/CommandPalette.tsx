@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useStore, type ViewId } from "../../state/store";
+import { useStore } from "../../state/store";
+import { useView } from "../../state/navigation";
+import type { ViewId } from "../../routes";
 import { Modal } from "../overlays/Modal";
 import { Search } from "../icons";
 import { stateAbbr } from "../../state/format";
@@ -15,7 +17,8 @@ const VIEWS: { id: ViewId; label: string }[] = [
 ];
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { counties, lens, setLens, setView, select } = useStore();
+  const { counties, lens, setLens, select } = useStore();
+  const { setView } = useView();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

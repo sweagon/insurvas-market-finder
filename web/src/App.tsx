@@ -1,5 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
+import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "./state/store";
+import { useView } from "./state/navigation";
 import { loadAll } from "./data/load";
 import { useUrlSync } from "./state/url";
 import { Sidebar } from "./design-system/patterns/Sidebar";
@@ -20,6 +22,7 @@ const Sensitivity = lazy(() => import("./views/Sensitivity"));
 const Methodology = lazy(() => import("./views/Methodology"));
 const DesignGallery = lazy(() => import("./views/DesignGallery"));
 const AreaPage = lazy(() => import("./views/AreaPage"));
+const PrintBrief = lazy(() => import("./views/PrintBrief"));
 
 // Overlays and dialogs are only reachable on demand, so their Radix
 // dependencies (dialog, focus scope, radio group, switch) stay out of the
@@ -52,8 +55,35 @@ const ExportDialog = lazy(() =>
 );
 
 
+function AreaRoute() {
+  const { fips = "" } = useParams();
+  const { counties, selectedFips, select, loaded } = useStore();
+  useEffect(() => {
+    if (fips && selectedFips !== fips) select(fips);
+  }, [fips, selectedFips, select]);
+  if (loaded && fips && !counties.some((c) => c.fips === fips)) {
+    return <NotFound title="Area not found" reason="That FIPS code is not in the current dataset." />;
+  }
+  return <AreaPage />;
+}
+
+function NotFound({ title = "Page not found", reason = "This route does not exist." }: { title?: string; reason?: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="space-y-3 text-center">
+        <EmptyState title={title} reason={reason} actionLabel="Go to map" onAction={() => navigate("/")} />
+        <Link to="/rankings" className="text-body-sm text-accenttext hover:underline">
+          Browse rankings
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
-  const { view, setData, setLoadError, loaded, loadError, selectedFips, select, counties, lens, compare, toggleCompare } = useStore();
+  const { setData, setLoadError, loaded, loadError, selectedFips, select, counties, lens, compare, toggleCompare } = useStore();
+  const { view, setView } = useView();
   const selected = counties.find((c) => c.fips === selectedFips);
   const selectedScore = selected?.scores?.[lens];
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -61,7 +91,6 @@ function Shell() {
   const [shareOpen, setShareOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { setView } = useStore();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -123,14 +152,18 @@ function Shell() {
       <main className="relative col-start-2 row-start-2 min-w-0 overflow-auto pb-14 lg:pb-0">
         <StaleDataBanner />
         <Suspense fallback={<EmptyState title="Loading view" reason="Preparing module" />}>
-          {view === "explore" && <Explore />}
-          {view === "rankings" && <Rankings />}
-          {view === "compare" && <Compare />}
-          {view === "scatter" && <Scatter />}
-          {view === "sensitivity" && <Sensitivity />}
-          {view === "methodology" && <Methodology />}
-          {view === "design" && <DesignGallery />}
-          {view === "area" && <AreaPage />}
+          <Routes>
+            <Route path="/" element={<Explore />} />
+            <Route path="/rankings" element={<Rankings />} />
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/scatter" element={<Scatter />} />
+            <Route path="/sensitivity" element={<Sensitivity />} />
+            <Route path="/methodology" element={<Methodology />} />
+            <Route path="/area/:fips" element={<AreaRoute />} />
+            <Route path="/print/:fips" element={<PrintBrief />} />
+            <Route path="/design" element={<DesignGallery />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </Suspense>
         <CompareTray />
       </main>
@@ -146,7 +179,7 @@ function Shell() {
           ))}
         </nav>
       </Modal>
-      {selected && selectedScore && (
+      {selected && selectedScore && view !== "area" && view !== "print" && (
         <Drawer
           open={true}
           onOpenChange={(o) => { if (!o) select(null); }}
@@ -167,9 +200,14 @@ function Shell() {
           footer={
             <div className="flex items-center justify-between gap-2">
               <span className="text-caption text-tertiary">ACS 2020–2024 · {compare.length} selected</span>
-              <button type="button" onClick={() => toggleCompare(selected.fips)} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
-                {compare.includes(selected.fips) ? "Remove from compare" : "Add to compare"}
-              </button>
+              <div className="flex items-center gap-2">
+                <Link to={`/area/${selected.fips}`} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                  Full page
+                </Link>
+                <button type="button" onClick={() => toggleCompare(selected.fips)} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                  {compare.includes(selected.fips) ? "Remove from compare" : "Add to compare"}
+                </button>
+              </div>
             </div>
           }
         >
