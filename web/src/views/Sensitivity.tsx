@@ -5,7 +5,8 @@ import { Card } from "../design-system/primitives/Card";
 import { Slider } from "../design-system/primitives/Slider";
 import { Button } from "../design-system/primitives/Button";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR } from "../state/lensMeta";
-import { CONFIG, scoreMatrix } from "../score/score";
+import { useScoreWorker } from "../score/useScoreWorker";
+import { ErrorState } from "../design-system/patterns/states";
 import { stateAbbr } from "../state/format";
 import type { SubScoreId } from "../data/types";
 import type { SubScoreWeights } from "../state/store";
@@ -42,49 +43,20 @@ export default function Sensitivity() {
     setLocal({ ...base });
   }
 
-  const columns = useMemo(() => {
-    const out: Record<string, Float64Array> = {};
-    for (const m of CONFIG.metrics) {
-      if (!m.scored) continue;
-      out[m.id] = Float64Array.from(
-        counties.map((c) => {
-          const v = c.metrics?.[m.id];
-          return typeof v === "number" ? v : Number.NaN;
-        }),
-      );
-    }
-    return out;
-  }, [counties]);
+  const { total, eligibility, pending, error } = useScoreWorker(counties, lens, local);
 
   const result = useMemo(() => {
-    if (!counties.length) return null;
-    const cfg = {
-      ...CONFIG,
-      lenses: {
-        ...CONFIG.lenses,
-        [lens]: {
-          ...CONFIG.lenses[lens],
-          weights: local as unknown as Record<string, number>,
-        },
-      },
-    };
-    const scored = scoreMatrix({
-      fips: counties.map((c) => c.fips),
-      columns,
-      config: cfg,
-      lensId: lens,
-      eligibilityPop: Float64Array.from(counties.map((c) => c.pop60)),
-    });
+    if (!counties.length || !total || !eligibility) return null;
     const rows = counties
       .map((c, i) => ({
         fips: c.fips,
         name: c.name,
         state: c.state,
-        eligible: scored.eligibility[i],
-        total: scored.total[i],
+        eligible: eligibility[i],
+        total: total[i],
         baseRank: c.scores[lens].rank,
       }))
-      .filter((r) => r.eligible);
+      .filter((r) => r.eligible && Number.isFinite(r.total));
 
     const sorted = [...rows].sort((a, b) => b.total - a.total);
     const newRankByFips = new Map(
@@ -105,7 +77,7 @@ export default function Sensitivity() {
     const newTop = new Set(sorted.slice(0, 50).map((r) => r.fips));
     const overlap = baseTop.filter((f) => newTop.has(f)).length;
     return { movers, overlap, n: rows.length };
-  }, [counties, columns, lens, local]);
+  }, [counties, total, eligibility, lens]);
 
   const apply = (k: SubScoreId, v: number) =>
     setLocal((prev) => ({ ...prev, [k]: v }));
@@ -115,7 +87,7 @@ export default function Sensitivity() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="Sensitivity Lab"
-        description="Rebalance the six sub-scores and watch the ranking move. The reference scorer recomputes every eligible county in your browser."
+        description="Rebalance the six sub-scores and watch the ranking move. The reference scorer recomputes every eligible county in a Web Worker, so sliders stay responsive."
         actions={
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" onClick={reset}>
@@ -165,13 +137,21 @@ export default function Sensitivity() {
         </Card>
 
         <div className="space-y-4">
+          <p className="sr-only" role="status" aria-live="polite">
+            {pending ? "Re-scoring counties" : result ? `Re-scored ${result.n.toLocaleString()} eligible counties` : ""}
+          </p>
+          {error && (
+            <Card>
+              <ErrorState message={error} />
+            </Card>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Card bodyClassName="p-4">
               <p className="text-micro uppercase text-tertiary">
                 Eligible re-scored
               </p>
               <p className="mt-1 num text-num-lg">
-                {result?.n?.toLocaleString() ?? "—"}
+                {pending ? <span className="text-tertiary">…</span> : (result?.n?.toLocaleString() ?? "—")}
               </p>
             </Card>
             <Card bodyClassName="p-4">

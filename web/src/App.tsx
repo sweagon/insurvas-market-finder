@@ -135,6 +135,18 @@ function Shell() {
     );
   }
 
+  // The brief is paper, not an app screen: no sidebar, bar or tray.
+  if (view === "print") {
+    return (
+      <Suspense fallback={<EmptyState title="Preparing brief" reason="Loading the print layout." />}>
+        <Routes>
+          <Route path="/print/:fips" element={<PrintBrief />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
   return (
     <div className="grid h-screen grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr]">
       <aside className="col-start-1 row-span-2 hidden lg:block">
@@ -181,7 +193,7 @@ function Shell() {
           ))}
         </nav>
       </Modal>
-      {selected && selectedScore && view !== "area" && view !== "print" && (
+      {selected && selectedScore && view !== "area" && (
         <Drawer
           open={true}
           onOpenChange={(o) => { if (!o) select(null); }}
