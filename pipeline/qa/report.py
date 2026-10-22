@@ -1,8 +1,9 @@
 """Generate ``data/qa_report.md`` - the human-readable data-quality audit.
 
 Checks are deliberately assertive: the build fails loudly if any invariant is
-violated (contribution sums, forbidden fields for rule R7, key coverage). Soft
-findings (imputed rows, shrunk rows, min/max) are reported for review.
+violated (contribution sums, forbidden fields for rule R7, metric coverage
+floors, out-of-range values, county-universe integrity). Soft findings
+(imputed rows, shrunk rows, min/max) are reported for review.
 """
 
 from __future__ import annotations
@@ -34,6 +35,21 @@ R7_FORBIDDEN_SUBSTRINGS = [
     "native",
 ]
 
+# Units that are bounded above by 1. A value outside the bound is a bug, not
+# an outlier, and must fail the build.
+BOUNDED_UNITS = {"share", "percent"}
+# Units that cannot be negative. "index" and "growth_rate" are deliberately
+# absent: a z-score index and a growth rate can both be negative.
+NON_NEGATIVE_UNITS = {
+    "share",
+    "percent",
+    "people",
+    "usd",
+    "density",
+    "rate",
+    "households",
+}
+
 
 def _find_forbidden(columns: list[str]) -> list[str]:
     hits = []
@@ -46,11 +62,56 @@ def _find_forbidden(columns: list[str]) -> list[str]:
     return hits
 
 
+def _weight_problems(cfg) -> list[str]:
+    """Every lens must distribute exactly 1.0 across each sub-score.
+
+    The scorer renormalises anyway, so a wrong total silently rescales the
+    metric weights. A config whose weights do not add up is a documentation
+    bug: the file is the record of which metric the model actually trusts.
+    """
+    problems: list[str] = []
+    for lens_id in cfg.lenses:
+        for sub in cfg.sub_score_ids():
+            ids = [m for m in cfg.scored_metrics if m.subscore == sub]
+            total = sum(float(getattr(m.lens_weights, lens_id)) for m in ids)
+            if ids and abs(total - 1.0) > 1e-9:
+                problems.append(
+                    f"lens '{lens_id}' sub-score '{sub}' weights sum to {total:.4f}, not 1.0"
+                )
+    return problems
+
+
+def _out_of_range(cfg, df: pl.DataFrame) -> list[tuple[str, str, int]]:
+    """Metrics whose values fall outside what their unit can physically be."""
+    problems: list[tuple[str, str, int]] = []
+    for m in cfg.metrics:
+        if m.id not in df.columns:
+            problems.append((m.id, "missing from the metric matrix", df.height))
+            continue
+        col = df[m.id].cast(pl.Float64, strict=False)
+        if m.unit in BOUNDED_UNITS:
+            bad = int(((col < 0.0) | (col > 1.0)).sum())
+            if bad:
+                problems.append((m.id, f"outside [0, 1] for unit '{m.unit}'", bad))
+        elif m.unit in NON_NEGATIVE_UNITS:
+            bad = int((col < 0.0).sum())
+            if bad:
+                problems.append((m.id, f"negative value for unit '{m.unit}'", bad))
+    return problems
+
+
 def generate() -> str:
     cfg = load_config()
     manifest = Manifest()
-    df = build_metric_matrix(manifest)
+    df = build_metric_matrix(manifest, cfg)
     n = df.height
+
+    fips = df["fips"].to_list()
+    fips_ok = (
+        len(fips) == len(set(fips))
+        and all(len(str(f).strip()) == cfg.geography.fips_length for f in fips)
+        and all(str(f).strip().isdigit() for f in fips)
+    )
 
     lines: list[str] = []
     w = lines.append
@@ -63,26 +124,132 @@ def generate() -> str:
     # ---- Coverage ---------------------------------------------------------
     w("## Metric coverage")
     w("")
-    w("| metric | sub-score | scored | nulls | coverage | min | p50 | max |")
-    w("| --- | --- | --- | --- | --- | --- | --- | --- |")
+    w(
+        f"Every metric must be present for at least "
+        f"**{cfg.params.min_metric_coverage:.0%}** of counties "
+        f"(per-metric overrides are listed in the `floor` column). "
+        f"Scored metrics below their floor fail the build."
+    )
+    w("")
+    w("| metric | sub-score | scored | nulls | coverage | floor | min | p50 | max | status |")
+    w("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     scored = {m.id for m in cfg.scored_metrics}
+    coverage_failures: list[tuple[str, float, float]] = []
     for m in cfg.metrics:
+        floor = cfg.coverage_floor(m)
         if m.id not in df.columns:
-            w(f"| {m.id} | {m.subscore} | {'yes' if m.scored else 'no'} | MISSING | 0% |  |  |  |")
+            w(
+                f"| {m.id} | {m.subscore} | {'yes' if m.id in scored else 'no'} | "
+                f"MISSING | 0% | {floor:.0%} |  |  |  | FAIL |"
+            )
+            coverage_failures.append((m.id, 0.0, floor))
             continue
         col = df[m.id].cast(pl.Float64, strict=False)
         nulls = col.null_count()
         finite = col.drop_nulls().to_numpy()
         cov = 100.0 * (n - nulls) / n if n else 0.0
+        failed = (cov / 100.0) < floor
+        status = "FAIL" if failed else "ok"
+        if failed:
+            coverage_failures.append((m.id, cov / 100.0, floor))
         if finite.size:
             w(
                 f"| {m.id} | {m.subscore} | {'yes' if m.id in scored else 'no'} | "
-                f"{nulls} | {cov:.1f}% | {np.nanmin(finite):.4g} | "
-                f"{np.nanmedian(finite):.4g} | {np.nanmax(finite):.4g} |"
+                f"{nulls} | {cov:.1f}% | {floor:.0%} | {np.nanmin(finite):.4g} | "
+                f"{np.nanmedian(finite):.4g} | {np.nanmax(finite):.4g} | {status} |"
             )
         else:
-            flag = "yes" if m.id in scored else "no"
-            w(f"| {m.id} | {m.subscore} | {flag} | {nulls} | 0% |  |  |  |")
+            w(
+                f"| {m.id} | {m.subscore} | {'yes' if m.id in scored else 'no'} | "
+                f"{nulls} | 0% | {floor:.0%} |  |  |  | {status} |"
+            )
+    w("")
+
+    # ---- County universe --------------------------------------------------
+    expected = int(cfg.params.expected_counties)
+    tolerance = float(cfg.params.county_count_tolerance)
+    allowed = max(1, int(round(expected * tolerance)))
+    count_ok = abs(n - expected) <= allowed
+    w("## County universe")
+    w("")
+    w(
+        f"- Counties in the metric matrix: **{n:,}** "
+        f"(expected {expected:,}, tolerance +/-{allowed:,})"
+    )
+    w(f"- FIPS codes are {cfg.geography.fips_length} characters and unique: "
+      f"**{'yes' if fips_ok else 'NO'}**")
+    w(f"- Status: **{'PASS' if count_ok and fips_ok else 'FAIL'}**")
+    w("")
+
+    # ---- Value ranges -----------------------------------------------------
+    range_problems = _out_of_range(cfg, df)
+    w("## Value ranges")
+    w("")
+    if not range_problems:
+        w("_No metric violates its unit bounds._")
+    else:
+        w("| metric | problem | rows |")
+        w("| --- | --- | --- |")
+        for mid, problem, count in range_problems:
+            w(f"| {mid} | {problem} | {count} |")
+    w("")
+
+    # ---- Weights ----------------------------------------------------------
+    weight_problems = _weight_problems(cfg)
+    w("## Model weights")
+    w("")
+    if not weight_problems:
+        w(
+            "Every lens distributes 1.0 across each sub-score. The lens weights "
+            "themselves are documented priors, not measurements."
+        )
+    else:
+        for p in weight_problems:
+            w(f"- **FAIL** {p}")
+    w("")
+
+    # ---- Source coverage --------------------------------------------------
+    w("## Source coverage")
+    w("")
+    w("Every source in the config, the metrics it feeds and the share of counties")
+    w("those metrics cover. A source that silently stopped covering counties is")
+    w("a join failure, not a data quirk.")
+    w("")
+    w("| source | metrics | min coverage |")
+    w("| --- | --- | --- |")
+    for sid in sorted(cfg.sources):
+        ids = [m.id for m in cfg.metrics if m.source == sid]
+        covs = []
+        for mid in ids:
+            if mid not in df.columns:
+                continue
+            nulls = df[mid].cast(pl.Float64, strict=False).null_count()
+            covs.append(100.0 * (n - nulls) / n if n else 0.0)
+        best = min(covs) if covs else 0.0
+        w(f"| {sid} | {', '.join(ids) if ids else '(not used by any metric)'} | {best:.1f}% |")
+    w("")
+
+    # ---- Outliers ---------------------------------------------------------
+    w("## Outliers")
+    w("")
+    w(
+        "Values outside the 1st/99th percentile of their own metric. These are "
+        "reported, not rejected: a real outlier is information, and the scorer "
+        "ranks on percentiles, which are already outlier-resistant."
+    )
+    w("")
+    w("| metric | below p01 | above p99 |")
+    w("| --- | --- | --- |")
+    for m in cfg.metrics:
+        if m.id not in df.columns:
+            continue
+        finite = df[m.id].cast(pl.Float64, strict=False).drop_nulls().to_numpy()
+        if finite.size < 20:
+            continue
+        lo, hi = np.nanpercentile(finite, [1, 99])
+        below = int((finite < lo).sum())
+        above = int((finite > hi).sum())
+        w(f"| {m.id} | {below} | {above} |")
     w("")
 
     # ---- Flags ------------------------------------------------------------
@@ -175,6 +342,24 @@ def generate() -> str:
         raise SystemExit(f"rule R7 violation: forbidden columns {forbidden}")
     if max_err > 1e-9:
         raise SystemExit(f"contribution invariant failed: {max_err:.3e}")
+    if coverage_failures:
+        detail = ", ".join(
+            f"{mid} ({cov:.1%} < {floor:.0%})" for mid, cov, floor in coverage_failures
+        )
+        raise SystemExit(f"metric coverage below the configured floor: {detail}")
+    if range_problems:
+        detail = ", ".join(
+            f"{mid}: {problem} ({count} rows)" for mid, problem, count in range_problems
+        )
+        raise SystemExit(f"metric values outside their unit bounds: {detail}")
+    if not count_ok:
+        raise SystemExit(
+            f"county universe changed: {n} rows, expected {expected} (+/-{allowed})"
+        )
+    if not fips_ok:
+        raise SystemExit("FIPS integrity check failed: codes must be unique 5-digit strings")
+    if weight_problems:
+        raise SystemExit("; ".join(weight_problems))
     return report
 
 
