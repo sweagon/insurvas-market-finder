@@ -1,6 +1,6 @@
 # Data QA report
 
-Generated: 2026-10-22T00:20:35.201922+00:00
+Generated: 2026-10-22T00:27:15.131279+00:00
 Config version: 3  |  Counties: 3144
 
 ## Metric coverage

@@ -251,6 +251,14 @@ def build(*, mc_draws: int | None = None) -> dict:
     fips = df["fips"].to_list()
     pop = df["pop_60plus"].to_numpy()
     columns = {m.id: df[m.id].to_numpy().astype(float) for m in cfg.scored_metrics}
+    # Published margins of error, where the source publishes one. A metric
+    # without an entry here has no published MOE and falls back to the
+    # documented coefficient of variation.
+    moes = {
+        m.id: df[f"{m.id}_moe"].to_numpy().astype(float)
+        for m in cfg.scored_metrics
+        if f"{m.id}_moe" in df.columns
+    }
 
     identity = _identity(df)
 
@@ -275,6 +283,7 @@ def build(*, mc_draws: int | None = None) -> dict:
             cfg=cfg,
             lens_id=lens_id,
             eligibility_pop=pop,
+            moes=moes,
             draws=lens_draws,
         )
         total = res.total
@@ -290,6 +299,10 @@ def build(*, mc_draws: int | None = None) -> dict:
             "eligible": res.eligibility,
             "coverage": res.coverage if res.coverage is not None else np.ones(len(fips)),
             "partial": res.partial if res.partial is not None else np.zeros(len(fips), bool),
+            "rank_p05": band["rank_p05"],
+            "rank_p50": band["rank_p50"],
+            "rank_p95": band["rank_p95"],
+            "p_top50": band["p_top50"],
         }
         for s in cfg.sub_score_ids():
             sub[f"sub_{s}"] = res.subscores[s]
@@ -305,6 +318,10 @@ def build(*, mc_draws: int | None = None) -> dict:
                     "p50": _num(band["p50"][i], 4),
                     "p95": _num(band["p95"][i], 4),
                     "rank": rank[i] if res.eligibility[i] and rank[i] is not None else None,
+                    "rank_p05": _num(band["rank_p05"][i], 1),
+                    "rank_p50": _num(band["rank_p50"][i], 1),
+                    "rank_p95": _num(band["rank_p95"][i], 1),
+                    "p_top50": _num(band["p_top50"][i], 4),
                     "eligible": bool(res.eligibility[i]),
                     "coverage": _num(sub["coverage"][i], 6),
                     "partial": bool(sub["partial"][i]),
@@ -427,6 +444,10 @@ def _write_rankings_json(
                 "p50": _num(frame["p50"][i], 1),
                 "p95": _num(frame["p95"][i], 1),
                 "rank": (int(frame["rank"][i]) if frame["rank"][i] is not None else None),
+                "rank_p05": _num(frame["rank_p05"][i], 1),
+                "rank_p50": _num(frame["rank_p50"][i], 1),
+                "rank_p95": _num(frame["rank_p95"][i], 1),
+                "p_top50": _num(frame["p_top50"][i], 4),
                 "eligible": bool(frame["eligible"][i]),
                 "coverage": _num(frame["coverage"][i], 4),
                 "partial": bool(frame["partial"][i]),

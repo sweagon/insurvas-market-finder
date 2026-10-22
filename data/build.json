@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-10-22T00:20:25.420800+00:00",
+  "built_at": "2026-10-22T00:27:04.621751+00:00",
   "config_version": 3,
   "config_hash": "096ada4f537b3601",
   "vintages": {
@@ -31,5 +31,5 @@
     "spouse_protection": 187
   },
   "min_coverage": 0.9,
-  "duration_s": 54.2
+  "duration_s": 53.3
 }

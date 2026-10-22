@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T00:20:26Z",
+  "generated_at": "2026-10-22T00:27:05Z",
   "tool_version": "0.1.0",
   "entries": {
     "acs_b09021": {
@@ -183,7 +183,7 @@
       "source": "places",
       "vintage": "2025",
       "sha256": "56534265e9f23e6401bead9561a70ee84b01e5e34bb788a8e8f4a00e609822eb",
-      "retrieved_at": "2026-10-22T00:19:40.194409+00:00",
+      "retrieved_at": "2026-10-22T00:26:18.807801+00:00",
       "rows": 29580,
       "measures": [
         "CHD",
@@ -1552,7 +1552,7 @@
     }
   },
   "build": {
-    "built_at": "2026-10-22T00:20:25.420800+00:00",
+    "built_at": "2026-10-22T00:27:04.621751+00:00",
     "config_version": 3,
     "config_hash": "096ada4f537b3601",
     "counties": 3144,

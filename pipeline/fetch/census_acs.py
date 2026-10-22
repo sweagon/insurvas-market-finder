@@ -34,9 +34,17 @@ BASE = (
 COUNTY_GEO_PREFIX = "0500000US"
 
 # Tables we need, with the variables we keep and a human note for the manifest.
+# Each estimate variable is kept together with its margin-of-error twin
+# (``_E###`` / ``_M###``): the MOEs are what the uncertainty bands are built
+# from, and ACS publishes them at 90% confidence.
 TABLES: dict[str, tuple[str, ...]] = {
     "b19049": ("B19049_E005", "B19049_M005"),
-    "b19037": ("B19037_E053", *(f"B19037_E{i:03d}" for i in range(54, 70))),
+    "b19037": (
+        "B19037_E053",
+        "B19037_M053",
+        *(f"B19037_E{i:03d}" for i in range(54, 70)),
+        *(f"B19037_M{i:03d}" for i in range(54, 70)),
+    ),
     "b25027": (
         "B25027_E007",
         "B25027_E008",
@@ -44,10 +52,25 @@ TABLES: dict[str, tuple[str, ...]] = {
         "B25027_E015",
         "B25027_E016",
         "B25027_E017",
+        "B25027_M007",
+        "B25027_M008",
+        "B25027_M009",
+        "B25027_M015",
+        "B25027_M016",
+        "B25027_M017",
     ),
     "b25077": ("B25077_E001", "B25077_M001"),
-    "b28005": ("B28005_E014", "B28005_E016", "B28005_E017", "B28005_E018"),
-    "b09021": ("B09021_E022", "B09021_E024"),
+    "b28005": (
+        "B28005_E014",
+        "B28005_E016",
+        "B28005_E017",
+        "B28005_E018",
+        "B28005_M014",
+        "B28005_M016",
+        "B28005_M017",
+        "B28005_M018",
+    ),
+    "b09021": ("B09021_E022", "B09021_E024", "B09021_M022", "B09021_M024"),
 }
 
 _NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")

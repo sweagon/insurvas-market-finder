@@ -92,6 +92,23 @@ export function scoreRange(p05: number | null | undefined, p95: number | null | 
   return `${NUM.format(Math.round(p05))}–${NUM.format(Math.round(p95))}`;
 }
 
+/** Rank band: the positions a county could plausibly hold (1 = best). */
+export function rankRange(
+  p05: number | null | undefined,
+  p95: number | null | undefined,
+): string {
+  if (p05 == null || p95 == null) return "—";
+  const lo = Math.round(p05);
+  const hi = Math.round(p95);
+  return lo === hi ? `#${lo}` : `#${lo}–#${hi}`;
+}
+
+/** Share of simulations in which the county lands in the better half. */
+export function topHalf(p: number | null | undefined): string {
+  if (p == null) return "—";
+  return `${NUM.format(Math.round(p * 100))}%`;
+}
+
 /** Vintage with an en dash for ranges: ACS 2020–2024 */
 export function vintage(label: string, value: string | number): string {
   const v = String(value).replace(/(\d{4})-(\d{4})/, "$1–$2");

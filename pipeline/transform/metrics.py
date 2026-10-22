@@ -24,6 +24,7 @@ from pipeline.fetch.geography import fetch_geography
 from pipeline.fetch.http import Manifest
 from pipeline.fetch.irs_soi import fetch_irs
 from pipeline.fetch.places import CHRONIC_MEASURES, RISK_MEASURES, fetch_places
+from pipeline.transform import moe
 from pipeline.transform.geography import (
     impute_ct_state_mean,
 )
@@ -161,6 +162,7 @@ def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
         + pl.col("B25027_E017")
     )
     owner_nomort = pl.col("B25027_E016") + pl.col("B25027_E017")
+    owner_with_mort = pl.col("B25027_E008") + pl.col("B25027_E009")
 
     df = df.with_columns(
         income_65plus_median=pl.col("B19049_E005"),
@@ -169,10 +171,63 @@ def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
         .then((owner_nomort / owner_total) * pl.col("B25077_E001"))
         .otherwise(None),
     )
+    # ---- Published margins of error for the ACS-derived metrics -----------
+    # ACS publishes 90% MOEs for every estimate in the table-based Summary
+    # File. They are propagated with the documented Census formulas, not by
+    # naive addition (see pipeline/transform/moe.py). A metric with a null
+    # MOE is one whose inputs were missing, which is different from a metric
+    # with no published MOE: the latter falls back to a documented CV.
+    hh_75k_moe = moe.moe_sum_expr([f"B19037_M{i:03d}" for i in range(65, 70)])
+    owner_total_moe = moe.moe_sum_expr(
+        ["B25027_M008", "B25027_M009", "B25027_M016", "B25027_M017"]
+    )
+    owner_nomort_moe = moe.moe_sum_expr(["B25027_M016", "B25027_M017"])
+    owner_with_mort_moe = moe.moe_sum_expr(["B25027_M008", "B25027_M009"])
+    p_owner_nomort = pl.when(owner_total > 0).then(owner_nomort / owner_total).otherwise(None)
+    p_owner_mort = pl.when(owner_total > 0).then(owner_with_mort / owner_total).otherwise(None)
+    p_75k = pl.when(b65 > 0).then(hh_75k_plus / b65).otherwise(None)
+    p_spouse = (
+        pl.when(pl.col("B09021_E022") > 0)
+        .then(pl.col("B09021_E024") / pl.col("B09021_E022"))
+        .otherwise(None)
+    )
+    p_internet = (
+        pl.when(pl.col("B28005_E014") > 0)
+        .then((pl.col("B28005_E016") + pl.col("B28005_E017")) / pl.col("B28005_E014"))
+        .otherwise(None)
+    )
+    moe_owner_nomort_prop = moe.moe_proportion_expr(
+        p_owner_nomort, owner_nomort_moe, owner_total, owner_total_moe
+    )
+    moe_owner_mort_prop = moe.moe_proportion_expr(
+        p_owner_mort, owner_with_mort_moe, owner_total, owner_total_moe
+    )
+
+    df = df.with_columns(
+        share_65_hh_75k_moe=moe.moe_proportion_expr(
+            p_75k, hh_75k_moe, pl.col("B19037_E053"), pl.col("B19037_M053")
+        ),
+        home_equity_65_moe=moe.moe_product_expr(
+            p_owner_nomort,
+            moe_owner_nomort_prop,
+            pl.col("B25077_E001"),
+            pl.col("B25077_M001"),
+        ),
+        mortgage_share_65_owners_moe=moe_owner_mort_prop,
+        spouse_share_65plus_moe=moe.moe_proportion_expr(
+            p_spouse, pl.col("B09021_M024"), pl.col("B09021_E022"), pl.col("B09021_M022")
+        ),
+        internet_65plus_moe=moe.moe_proportion_expr(
+            p_internet,
+            moe.moe_sum_expr(["B28005_M016", "B28005_M017"]),
+            pl.col("B28005_E014"),
+            pl.col("B28005_M014"),
+        ),
+        income_65plus_median_moe=pl.col("B19049_M005"),
+    )
 
     # ---- Need -------------------------------------------------------------
     df = df.join(irs, on="fips", how="left")
-    owner_with_mort = pl.col("B25027_E008") + pl.col("B25027_E009")
     df = df.with_columns(
         spouse_share_65plus=pl.when(pl.col("B09021_E022") > 0)
         .then(pl.col("B09021_E024") / pl.col("B09021_E022"))

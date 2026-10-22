@@ -4,7 +4,7 @@ import { PageHeader } from "../design-system/patterns/PageHeader";
 import { Card } from "../design-system/primitives/Card";
 import { KpiStrip, KpiCell } from "../design-system/patterns/kpi";
 import { RankBadge, ScoreChip, ConfidenceBadge, RobustPickBadge } from "../design-system/primitives/badges";
-import { popCompact, scoreRange, score, metricValue } from "../state/format";
+import { popCompact, scoreRange, rankRange, topHalf, score, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR } from "../state/lensMeta";
 
 const HIGHLIGHT_METRICS = [
@@ -25,6 +25,9 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
   const s = c.scores[lens];
   const width = (s.p95 ?? 0) - (s.p05 ?? 0);
   const confidence: "high" | "medium" | "low" = width <= 8 ? "high" : width <= 16 ? "medium" : "low";
+  // A robust pick is a county that lands in the better half of the country in
+  // almost every simulation - not one whose *upper* bound is low.
+  const robust = (s.p_top50 ?? 0) >= 0.8;
   const allMetrics = catalog?.metrics ?? [];
   const metricById = (id: string) => allMetrics.find((m) => m.id === id);
   const strongest = [...SUBSCORE_ORDER]
@@ -38,7 +41,7 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
         <PageHeader
           title={`${c.name}, ${c.state}`}
           description={`FIPS ${c.fips} • ${popCompact(c.pop60)} aged 60+`}
-          actions={<div className="flex flex-wrap gap-2"><RankBadge rank={s.rank} /><ScoreChip value={s.total} /><ConfidenceBadge level={confidence} />{s.p95 != null && s.p95 <= 50 && <RobustPickBadge />}</div>}
+          actions={<div className="flex flex-wrap gap-2"><RankBadge rank={s.rank} /><ScoreChip value={s.total} /><ConfidenceBadge level={confidence} />{robust && <RobustPickBadge />}</div>}
         />
       )}
       <div className={embedded ? "space-y-4" : "space-y-4 p-4 md:p-6"}>
@@ -47,6 +50,16 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
           <KpiCell label="Residents 60+" value={popCompact(c.pop60)} />
           <KpiCell label="Rank" value={s.rank ? `#${s.rank}` : "—"} />
           <KpiCell label="Score range (P5-P95)" value={scoreRange(s.p05, s.p95)} valueClassName="text-num-md" />
+          <KpiCell
+            label="Rank range (P5-P95)"
+            value={rankRange(s.rank_p05, s.rank_p95)}
+            valueClassName="text-num-md"
+          />
+          <KpiCell
+            label="Chance of a top-half finish"
+            value={topHalf(s.p_top50)}
+            valueClassName="text-num-md"
+          />
         </KpiStrip>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -96,7 +109,7 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
             </dl>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <ConfidenceBadge level={confidence} />
-              {s.p95 != null && s.p95 <= 50 && <RobustPickBadge />}
+              {robust && <RobustPickBadge />}
             </div>
             <button type="button" onClick={() => toggleCompare(c.fips)} className="mt-4 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
               {compare.includes(c.fips) ? "Remove from compare" : "Add to compare"}

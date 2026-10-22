@@ -105,15 +105,36 @@ for guaranteed-issue products.
 - **Census MOE formulas** (`pipeline/transform/moe.py`): sums use
   `sqrt(MOE1^2 + MOE2^2)`; proportions and ratios use the documented formulas with the
   ratio fallback when a radicand goes negative.
+- **Published margins of error are used where they exist.** Every ACS estimate in the
+  table-based Summary File carries a 90% MOE, and the fetch now keeps the `_M###`
+  columns alongside the `_E###` ones. The MOE of each derived metric is propagated
+  with the Census formulas: `share_65_hh_75k`, `spouse_share_65plus`,
+  `mortgage_share_65_owners` and `internet_65plus` are proportions, `home_equity_65`
+  is a product of a proportion and a median house value, and `income_65plus_median`
+  is a published median with its own MOE.
 - **Empirical-Bayes shrinkage** for noisy small-county rates (agency density, the
   PLACES composites). Shrunk rows carry `shrunk_*` flags; counts appear in the QA
   report. No silent smoothing.
 - **Monte Carlo** (500 draws for the default lens): each metric's inputs are
-  perturbed by its standard error and the whole pipeline is re-run, so the
-  nonlinear transforms propagate. Where a source publishes no MOE (POPEST point
-  estimates, CBP counts) we use a **documented coefficient of variation**
-  (`priors.default_cv`, `priors.cv_no_moe`) rather than pretending precision. The
-  result is a 90% band (`p05`-`p95`) shown next to every score.
+  perturbed and the whole pipeline is re-run, so the nonlinear transforms propagate.
+  A metric with a published MOE is perturbed additively with a Gaussian of standard
+  error `MOE / 1.645`, because that is the precision the publisher claimed. A metric
+  with no published MOE (POPEST point estimates, CBP counts, IRS SOI, BEA, the PLACES
+  composites) is perturbed with a multiplicative log-normal at a **documented
+  coefficient of variation** (`priors.default_cv`, `priors.cv_no_moe`) rather than
+  pretending precision. The result is a 90% band (`p05`-`p95`) shown next to every
+  score.
+- **The weights are uncertain too.** The lens weights are priors, not measurements, so
+  each draw also takes the sub-score weights and the metric weights from a Dirichlet
+  distribution centred on the configured values. Without this, a county whose score
+  turns on a close call between two sub-scores would look certain when the model is
+  in fact guessing.
+- **Rank bands.** The same draws give the distribution of the *rank*, not just of the
+  score: `rank_p05`, `rank_p50` and `rank_p95` are the positions the county could
+  plausibly hold (1 = best), and `p_top50` is the share of draws in which it lands
+  in the better half of the country. A county can be confidently near the top and
+  another can be nominally #500 while its band runs from #200 to #1,400; the band
+  is what makes that difference visible.
 
 ## 6. Synthetic ("modeled") quantities
 
