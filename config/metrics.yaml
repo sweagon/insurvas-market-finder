@@ -38,6 +38,11 @@ params:
   # dropped rows. The check allows a 1% slack for vintage-driven differences.
   expected_counties: 3144
   county_count_tolerance: 0.01
+  # Prior strength for the SSA replacement-rate shrinkage: a county needs
+  # roughly this many 65+ residents before its own measured share carries
+  # more information than the share SSA publishes for its state. Documented
+  # prior, not a measurement.
+  ssa_share_prior_denominator: 1000
 
 vintages:
   acs: "2020-2024"            # ACS 5-year, latest county-complete (released 2026-01-29)
@@ -47,6 +52,7 @@ vintages:
   places: 2025                # PLACES 2025 release (BRFSS 2023/2022)
   bea: 2024                   # CAINC4 regional income (verify in fetch)
   gazetteer: 2024
+  ssa_oasdi: "December 2025"  # OASDI beneficiaries in current-payment status
 
 geography:
   include_pr: false           # PR supported but excluded by default
@@ -97,6 +103,12 @@ sources:
     url: "https://apps.bea.gov/regional/zip/CAINC4.zip"
     license: "Public domain (US Government work)"
     attribution: "U.S. Bureau of Economic Analysis"
+  ssa_oasdi:
+    name: "SSA OASDI beneficiaries in current-payment status, by state and county"
+    url: "https://www.ssa.gov/policy/docs/statcomps/oasdi_sc/2025/"
+    license: "Public domain (US Government work)"
+    attribution: "U.S. Social Security Administration, Office of Research and Evaluation"
+    caveats: "One PDF per state, Table 4. Counts beneficiaries by the residence on the record; the District of Columbia is published only in the state tables."
 
 # National priors (not local). Documented as priors, never as observed local truth.
 priors:
@@ -321,7 +333,7 @@ metrics:
     transform: none
     moe: derived_prop
     scored: true
-    lens_weights: {volume: 0.50, balanced: 0.45, final_expense: 0.35, legacy_wealth: 0.40, spouse_protection: 0.65}
+    lens_weights: {volume: 0.40, balanced: 0.35, final_expense: 0.30, legacy_wealth: 0.35, spouse_protection: 0.50}
     caveats: "Household coupling proxy, not marital status: the numerator counts people who are a spouse of, or living with, a spouse. Not a proxy for dependents."
 
   - id: mortgage_share_65_owners
@@ -335,8 +347,28 @@ metrics:
     transform: none
     moe: derived_prop
     scored: true
-    lens_weights: {volume: 0.50, balanced: 0.55, final_expense: 0.65, legacy_wealth: 0.60, spouse_protection: 0.35}
+    lens_weights: {volume: 0.40, balanced: 0.45, final_expense: 0.50, legacy_wealth: 0.45, spouse_protection: 0.30}
     caveats: "A remaining mortgage is a coverage need signal, not a financial-stress measure."
+
+  - id: ssa_beneficiary_share_65plus
+    label: Share of 65+ residents receiving Social Security benefits
+    subscore: need
+    source: ssa_oasdi
+    table_field: "SSA OASDI Table 4: beneficiaries aged 65 or older (men + women) / POPEST population aged 65+"
+    vintage: "December 2025"
+    unit: share
+    direction: higher_is_better
+    transform: none
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.20, balanced: 0.20, final_expense: 0.20, legacy_wealth: 0.20, spouse_protection: 0.20}
+    # A county whose own count and the Census population disagree about the
+    # size of its 65+ population has no usable share; it takes the share SSA
+    # publishes for its state and is flagged (imputed_ssa_share). The value is
+    # also shrunk toward that state share (see the ssa_share_prior_denominator
+    # parameter), so the metric reads as a state-level signal with genuine
+    # county-level detail only where the county is large enough to carry it.
+    caveats: "Social Security replacement rate: a high share means the older population's income is a fixed benefit that does not grow, so a guaranteed death benefit is harder to self-fund. It is also strongly correlated with low income, which the affordability sub-score already measures; it is a coverage-need signal, not a spending-power signal."
 
   # ---------------- REACHABILITY ----------------
   - id: internet_65plus

@@ -86,6 +86,32 @@ def _get(url: str, headers: dict[str, str] | None = None) -> httpx.Response:
         return resp
 
 
+@retry(
+    stop=stop_after_attempt(4),
+    wait=wait_exponential(multiplier=1.5, min=2, max=30),
+    retry=retry_if_exception_type(Exception),
+    reraise=True,
+)
+def _get_browser(url: str, headers: dict[str, str] | None, impersonate: str) -> Any:
+    """Fetch with a browser TLS/HTTP fingerprint.
+
+    A few government sites (ssa.gov among them) sit behind an edge bot
+    manager that rejects Python's TLS fingerprint outright, whatever the
+    headers say. ``curl_cffi`` speaks the same wire protocol as a real
+    browser, so the request is accepted. The bytes are hashed and recorded in
+    the manifest exactly like any other download, so provenance is unchanged.
+    """
+    from curl_cffi import requests as curl_requests  # imported lazily
+
+    return curl_requests.get(
+        url,
+        impersonate=impersonate,
+        headers=headers or {},
+        timeout=120,
+        allow_redirects=True,
+    )
+
+
 def fetch_bytes(
     url: str,
     *,
@@ -93,12 +119,16 @@ def fetch_bytes(
     allow_status: tuple[int, ...] = (200,),
     headers: dict[str, str] | None = None,
     suffix: str = ".bin",
+    impersonate: str | None = None,
 ) -> FetchResult:
     """Fetch ``url`` with an on-disk cache and return a :class:`FetchResult`.
 
     Raises ``httpx.HTTPStatusError`` when the status is not in ``allow_status``.
     On a disallowed status we still return metadata via the exception message so
     callers can record a graceful skip (see the ADR on inaccessible sources).
+
+    ``impersonate`` selects a browser profile (``"chrome"``) for hosts whose
+    edge blocks non-browser clients; see :func:`_get_browser`.
     """
     key = _cache_key(url)
     ensure_dirs()
@@ -120,30 +150,48 @@ def fetch_bytes(
             path=body_path,
         )
 
-    resp = _get(url, headers=headers)
-    if resp.status_code not in allow_status:
-        raise httpx.HTTPStatusError(
-            f"{resp.status_code} for {url}",
-            request=resp.request,
-            response=resp,
-        )
-    data = resp.content
+    if impersonate:
+        resp = _get_browser(url, headers, impersonate)
+        status = int(resp.status_code)
+        if status not in allow_status:
+            request = httpx.Request("GET", url)
+            response = httpx.Response(status, request=request, content=bytes(resp.content))
+            raise httpx.HTTPStatusError(
+                f"{status} for {url}",
+                request=request,
+                response=response,
+            )
+        data = bytes(resp.content)
+        final_url = str(resp.url)
+        content_type = resp.headers.get("content-type", "")
+    else:
+        resp = _get(url, headers=headers)
+        if resp.status_code not in allow_status:
+            raise httpx.HTTPStatusError(
+                f"{resp.status_code} for {url}",
+                request=resp.request,
+                response=resp,
+            )
+        data = resp.content
+        final_url = str(resp.url)
+        content_type = resp.headers.get("content-type", "")
+
     body_path.write_bytes(data)
     meta = {
         "url": url,
-        "final_url": str(resp.url),
-        "status_code": resp.status_code,
-        "content_type": resp.headers.get("content-type", ""),
+        "final_url": final_url,
+        "status_code": status if impersonate else resp.status_code,
+        "content_type": content_type,
         "retrieved_at": _utc_now(),
     }
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return FetchResult(
         url=url,
-        final_url=str(resp.url),
-        status_code=resp.status_code,
+        final_url=final_url,
+        status_code=meta["status_code"],
         sha256=hashlib.sha256(data).hexdigest(),
         bytes_len=len(data),
-        content_type=meta["content_type"],
+        content_type=content_type,
         cached=False,
         retrieved_at=meta["retrieved_at"],
         path=body_path,

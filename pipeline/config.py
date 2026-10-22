@@ -96,6 +96,10 @@ class Params(BaseModel):
     min_metric_coverage: float = 0.90
     expected_counties: int = 3144
     county_count_tolerance: float = 0.01
+    # Prior strength for the SSA replacement-rate shrinkage: a county needs
+    # roughly this many 65+ residents before its own measured share carries
+    # more information than the share SSA publishes for its state.
+    ssa_share_prior_denominator: float = 1000.0
 
 
 class SubScore(BaseModel):
@@ -120,6 +124,7 @@ class Vintages(BaseModel):
     places: int
     bea: int
     gazetteer: int
+    ssa_oasdi: str
 
 
 class Geography(BaseModel):

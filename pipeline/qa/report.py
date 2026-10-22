@@ -266,6 +266,50 @@ def generate() -> str:
             w(f"| {c} | {cnt} | {100.0 * cnt / n:.2f}% |")
     w("")
 
+    # ---- SSA OASDI cross-check --------------------------------------------
+    w("## SSA OASDI cross-check")
+    w("")
+    w(
+        "SSA publishes the share of the 65+ population receiving benefits for "
+        "every state. The county table is summed back to the state and "
+        "compared with that published share, which is an independent check on "
+        "the parse: the fetch fails the build when the two drift more than 1%."
+    )
+    w("")
+    ssa_problems: list[str] = []
+    if "beneficiaries_65plus" in df.columns:
+        w(
+            "| state | counties | beneficiaries 65+ | SSA 65+ population "
+            "| SSA published share | implied | drift |"
+        )
+        w("| --- | --- | --- | --- | --- | --- | --- |")
+        worst = 0.0
+        per_state = df.group_by("state_fips").agg(
+            pl.len().alias("counties"),
+            pl.col("beneficiaries_65plus").sum().alias("counted"),
+            pl.col("ssa_population_65plus").first().alias("ssa_pop"),
+            pl.col("ssa_pct_65plus_receiving_benefits").first().alias("ssa_pct"),
+            pl.col("stname").first().alias("state_name"),
+        )
+        for r in per_state.sort("state_fips").iter_rows(named=True):
+            if r["ssa_pop"] is None or r["ssa_pct"] is None:
+                continue
+            implied = r["ssa_pop"] * r["ssa_pct"] / 100.0
+            drift = abs(r["counted"] - implied) / implied if implied else 0.0
+            worst = max(worst, drift)
+            if drift > 0.01:
+                ssa_problems.append(f"{r['state_name']} ({drift:.2%})")
+            w(
+                f"| {r['state_name']} | {r['counties']} | {r['counted']:,} | "
+                f"{r['ssa_pop']:,} | {r['ssa_pct']:.1f}% | {implied:,.0f} | "
+                f"{drift:.3%} |"
+            )
+        w("")
+        w(f"Worst state drift: **{worst:.3%}** (tolerance 1%).")
+    else:
+        w("_SSA data is not present in the metric matrix._")
+    w("")
+
     # ---- Eligibility ------------------------------------------------------
     elig = int((df["pop_60plus"] >= cfg.params.eligibility_min_60plus).sum())
     w("## Eligibility")
@@ -360,6 +404,11 @@ def generate() -> str:
         raise SystemExit("FIPS integrity check failed: codes must be unique 5-digit strings")
     if weight_problems:
         raise SystemExit("; ".join(weight_problems))
+    if ssa_problems:
+        raise SystemExit(
+            "SSA OASDI county counts disagree with the published state share: "
+            + ", ".join(ssa_problems)
+        )
     return report
 
 

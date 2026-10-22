@@ -47,6 +47,8 @@ FLAG_COLS = [
     "shrunk_agencies",
     "shrunk_chronic",
     "shrunk_risk",
+    "imputed_ssa_share",
+    "shrunk_ssa_share",
 ]
 
 

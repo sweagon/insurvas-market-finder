@@ -1,7 +1,7 @@
 {
-  "built_at": "2026-10-22T00:27:04.621751+00:00",
+  "built_at": "2026-10-22T09:20:27.583337+00:00",
   "config_version": 3,
-  "config_hash": "096ada4f537b3601",
+  "config_hash": "b698a85e4a0033a7",
   "vintages": {
     "acs": "2020-2024",
     "popest": 2025,
@@ -9,7 +9,8 @@
     "cbp": 2023,
     "places": 2025,
     "bea": 2024,
-    "gazetteer": 2024
+    "gazetteer": 2024,
+    "ssa_oasdi": "December 2025"
   },
   "counties": 3144,
   "eligible": 2680,
@@ -31,5 +32,5 @@
     "spouse_protection": 187
   },
   "min_coverage": 0.9,
-  "duration_s": 53.3
+  "duration_s": 210.1
 }

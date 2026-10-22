@@ -24,8 +24,12 @@ from pipeline.fetch.geography import fetch_geography
 from pipeline.fetch.http import Manifest
 from pipeline.fetch.irs_soi import fetch_irs
 from pipeline.fetch.places import CHRONIC_MEASURES, RISK_MEASURES, fetch_places
+from pipeline.fetch.ssa_oasdi import fetch_ssa_oasdi
 from pipeline.transform import moe
 from pipeline.transform.geography import (
+    STATE_FIPS_50_DC,
+    STATE_FIPS_TO_NAME,
+    STATE_FIPS_TO_USPS,
     impute_ct_state_mean,
 )
 from pipeline.transform.shrink import empirical_bayes_shrink
@@ -132,6 +136,69 @@ def _income_band_ownership_rates(
 def _zscore(column: str) -> pl.Expr:
     """Standardise a column across counties (mean 0, sample sd 1)."""
     return (pl.col(column) - pl.col(column).mean()) / pl.col(column).std()
+
+
+def _ssa_states() -> list[dict]:
+    """The jurisdictions SSA publishes a state PDF for, plus the District."""
+    return [
+        {
+            "fips": fips,
+            "usps": STATE_FIPS_TO_USPS[fips].lower(),
+            "name": STATE_FIPS_TO_NAME[fips],
+        }
+        for fips in sorted(STATE_FIPS_50_DC)
+    ]
+
+
+def _ssa_share(df: pl.DataFrame, prior_denominator: float) -> pl.DataFrame:
+    """The Social Security replacement rate, shrunk to the state share.
+
+    SSA counts beneficiaries by the residence on the record; the Census
+    estimates the 65+ population. The two agree *exactly* in the state totals
+    (the fetch fails the build otherwise) but they disagree for small
+    counties, where the allocation of a handful of people between the two
+    systems is arbitrary. A share of a population cannot exceed 1, so a raw
+    value above 1 is a disagreement about the size of the county's 65+
+    population, not a real share.
+
+    Two documented steps, both flagged:
+
+    * a raw value outside [0, 1] is replaced by the share SSA publishes for
+      the state (``imputed_ssa_share``);
+    * every county is shrunk toward that state share with weight
+      ``n / (n + k)`` on its 65+ population, where ``k`` is a documented
+      prior: a county needs roughly a thousand 65+ residents before its own
+      measured share carries more information than its state's.
+
+    The shrinkage is what keeps the metric from ranking tiny counties on
+    administrative noise.
+    """
+    out = df.with_columns(
+        _ssa_raw=pl.when(pl.col("pop_65plus") > 0)
+        .then(pl.col("beneficiaries_65plus") / pl.col("pop_65plus"))
+        .otherwise(None),
+        _ssa_target=pl.col("ssa_pct_65plus_receiving_benefits") / 100.0,
+    )
+    out = out.with_columns(
+        _ssa_w=pl.when(pl.col("pop_65plus") > 0)
+        .then(pl.col("pop_65plus") / (pl.col("pop_65plus") + prior_denominator))
+        .otherwise(0.0),
+    )
+    usable = pl.col("_ssa_raw").is_not_null() & pl.col("_ssa_raw").is_between(0.0, 1.0)
+    out = out.with_columns(
+        _ssa_value=pl.when(usable)
+        .then(
+            pl.col("_ssa_w") * pl.col("_ssa_raw")
+            + (1.0 - pl.col("_ssa_w")) * pl.col("_ssa_target")
+        )
+        .otherwise(pl.col("_ssa_target")),
+    )
+    out = out.with_columns(
+        ssa_beneficiary_share_65plus=pl.col("_ssa_value"),
+        imputed_ssa_share=~usable,
+        shrunk_ssa_share=usable & (pl.col("_ssa_w") < 0.5),
+    )
+    return out.drop("_ssa_raw", "_ssa_target", "_ssa_w", "_ssa_value")
 
 
 def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
@@ -283,6 +350,12 @@ def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
     )
     # The scored metric is the same per-capita series under its catalogue id.
     df = df.with_columns(non_earned_income_per_capita=pl.col("bea_dir_per_capita"))
+
+    # ---- SSA OASDI: Social Security replacement rate -----------------------
+    # Beneficiaries aged 65+ (SSA Table 4) over the 65+ population (POPEST).
+    ssa = fetch_ssa_oasdi(manifest, _ssa_states())
+    df = df.join(ssa, on="fips", how="left")
+    df = _ssa_share(df, float(cfg.params.ssa_share_prior_denominator))
 
     # ---- IRS CT reconciliation -------------------------------------------
     df = impute_ct_state_mean(
