@@ -55,6 +55,54 @@ def _config_hash(cfg) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
+def _write_manifest(manifest: Manifest, cfg, meta: dict) -> None:
+    """Write ``data/manifest.json`` - the record of every source in the build.
+
+    Rule R2: every URL, sha256, retrieval time and vintage that entered the
+    dataset must be recorded, and every ``source`` declared in the config must
+    actually appear here. The build fails if a declared source was never
+    fetched, so a config can never claim lineage the data does not have.
+    """
+    seen = {str(entry.get("source")) for entry in manifest.entries.values() if entry.get("source")}
+    missing = sorted(set(cfg.sources) - seen)
+    if missing:
+        raise RuntimeError(
+            "config declares sources that were never fetched, so their lineage "
+            f"cannot be recorded: {missing}"
+        )
+    manifest.write(
+        paths.MANIFEST,
+        extra={
+            "build": {
+                "built_at": meta["built_at"],
+                "config_version": meta["config_version"],
+                "config_hash": meta["config_hash"],
+                "counties": meta["counties"],
+                "eligible": meta["eligible"],
+            },
+            "config_sources": {
+                sid: {
+                    "name": src.name,
+                    "url": src.url,
+                    "license": src.license,
+                    "attribution": src.attribution,
+                }
+                for sid, src in cfg.sources.items()
+            },
+            "metric_sources": {
+                m.id: {
+                    "source": m.source,
+                    "table_field": m.table_field,
+                    "vintage": m.vintage,
+                    "scored": m.scored,
+                    "modeled": m.modeled,
+                }
+                for m in cfg.metrics
+            },
+        },
+    )
+
+
 def _num(value, nd: int = 2) -> float | None:
     """JSON-safe number. JSON has no NaN or Infinity, so they become null."""
     f = float(value)
@@ -192,6 +240,7 @@ def build(*, mc_draws: int | None = None) -> dict:
     started = time.time()
     cfg = load_config()
     manifest = Manifest()
+    paths.ensure_dirs()
 
     df = build_metric_matrix(manifest, cfg)
     df = df.with_columns(
@@ -293,11 +342,25 @@ def build(*, mc_draws: int | None = None) -> dict:
         "duration_s": round(time.time() - started, 1),
     }
 
-    _write_duckdb(identity, scores_df, contrib_df, meta)
+    _write_duckdb(identity, scores_df, contrib_df, meta, metrics_df=_metrics_frame(cfg, df))
     _write_rankings_json(cfg, identity, lens_scores, meta)
     _write_columnar_json(cfg, df, identity, lens_scores, meta)
+    _write_manifest(manifest, cfg, meta)
     paths.BUILD_META.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return meta
+
+
+def _metrics_frame(cfg, df: pl.DataFrame) -> pl.DataFrame:
+    """The full metric matrix as a flat table: one row per county, one column
+    per metric (plus the shrink flags). This is what makes the dataset
+    queryable - the API and any analyst can ask for the raw inputs behind a
+    score instead of only the score itself.
+    """
+    cols = ["fips"]
+    cols += [m.id for m in cfg.metrics if m.id in df.columns]
+    cols += [c for c in FLAG_COLS if c in df.columns]
+    keep = [c for c in cols if c in df.columns]
+    return df.select(keep).unique(subset=["fips"], keep="first")
 
 
 def _ranks(total, eligible) -> list[int | None]:
@@ -312,7 +375,11 @@ def _ranks(total, eligible) -> list[int | None]:
 
 
 def _write_duckdb(
-    identity: pl.DataFrame, scores: pl.DataFrame, contrib: pl.DataFrame, meta: dict
+    identity: pl.DataFrame,
+    scores: pl.DataFrame,
+    contrib: pl.DataFrame,
+    meta: dict,
+    metrics_df: pl.DataFrame | None = None,
 ) -> None:
     tmp = paths.PROCESSED / "duckdb_tmp"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -325,9 +392,14 @@ def _write_duckdb(
     ]
     pl.DataFrame(meta_rows).write_parquet(tmp / "build_meta.parquet")
 
+    tables = ["county", "scores", "contributions", "build_meta"]
+    if metrics_df is not None:
+        metrics_df.write_parquet(tmp / "metrics.parquet")
+        tables.append("metrics")
+
     con = duckdb.connect(str(paths.DB))
     try:
-        for name in ("county", "scores", "contributions", "build_meta"):
+        for name in tables:
             src = tmp / f"{name}.parquet"
             con.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM read_parquet('{src}')")
     finally:

@@ -99,6 +99,18 @@ def rankings_all() -> JSONResponse:
     return JSONResponse(content=json.loads(snapshot.read_text(encoding="utf-8")))
 
 
+@app.get("/api/manifest")
+def manifest() -> dict:
+    """Provenance record: every source URL, sha256, vintage and retrieval time.
+
+    This is the same file the pipeline writes as ``data/manifest.json`` (rule
+    R2), so the API and the committed artefact can never disagree.
+    """
+    if not paths.MANIFEST.exists():
+        raise HTTPException(status_code=503, detail="Manifest not built. Run `make build`.")
+    return json.loads(paths.MANIFEST.read_text(encoding="utf-8"))
+
+
 @app.get("/api/meta")
 def meta() -> dict:
     cfg = load_config()
@@ -195,6 +207,13 @@ def county(fips: str) -> dict:
         contrib = con.execute(
             "SELECT lens, metric, contribution FROM contributions WHERE fips = ?", [fips]
         ).fetchall()
+        metrics_row = None
+        metric_cols: list[str] = []
+        if "metrics" in _table_names(con):
+            metrics_row = con.execute(
+                "SELECT * FROM metrics WHERE fips = ?", [fips]
+            ).fetchone()
+            metric_cols = [d[0] for d in con.description]
     finally:
         con.close()
     return {
@@ -203,7 +222,14 @@ def county(fips: str) -> dict:
         "contributions": [
             {"lens": lens_id, "metric": m, "contribution": c} for lens_id, m, c in contrib
         ],
+        "metrics": (
+            dict(zip(metric_cols, metrics_row, strict=True)) if metrics_row else {}
+        ),
     }
+
+
+def _table_names(con) -> set[str]:
+    return {row[0] for row in con.execute("SHOW TABLES").fetchall()}
 
 
 @app.get("/api/states")
@@ -245,11 +271,10 @@ def refresh(authorization: str = Header(default="")) -> dict:
         raise HTTPException(status_code=409, detail="A refresh is already running")
     try:
         from pipeline.build import build
-        from pipeline.fetch.http import Manifest
 
-        manifest = Manifest()
+        # The build writes data/manifest.json itself (rule R2). Writing an
+        # empty manifest here would erase the provenance record.
         result = build()
-        manifest.write(paths.MANIFEST)
         return {"status": "refreshed", "meta": result}
     finally:
         _build_lock.release()

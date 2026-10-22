@@ -23,6 +23,10 @@ the server-side total exactly.
 
 from __future__ import annotations
 
+import hashlib
+import json
+from datetime import UTC, datetime
+
 import httpx
 import polars as pl
 
@@ -139,6 +143,13 @@ def fetch_places(manifest: Manifest) -> pl.DataFrame:
             "status": "ok",
             "source": "places",
             "vintage": "2025",
+            # The API is paged, so there is no single response body to hash.
+            # The hash is taken over the assembled payload - the exact rows
+            # that entered the build - which is what rule R2 needs to pin.
+            "sha256": hashlib.sha256(
+                json.dumps(records, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest(),
+            "retrieved_at": datetime.now(UTC).isoformat(),
             "rows": total_rows,
             "measures": list(ALL_MEASURES),
             "value_type": VALUE_TYPE,

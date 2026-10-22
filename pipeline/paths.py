@@ -24,5 +24,14 @@ WEB_PUBLIC_DATA = WEB / "public" / "data"
 DOCS = ROOT / "docs"
 ADR_DIR = DOCS / "adr"
 
-for _d in (DATA, RAW, CACHE, PROCESSED):
-    _d.mkdir(parents=True, exist_ok=True)
+
+def ensure_dirs() -> None:
+    """Create the writable directories. Called explicitly, never at import.
+
+    Creating directories as an import side effect breaks wheel installs (the
+    package directory is read-only) and makes merely importing the module a
+    write to the user's disk.
+    """
+    for directory in (DATA, RAW, CACHE, PROCESSED):
+        directory.mkdir(parents=True, exist_ok=True)
+

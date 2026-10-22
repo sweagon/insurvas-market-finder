@@ -23,7 +23,7 @@ from typing import Any
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from pipeline.paths import CACHE
+from pipeline.paths import CACHE, ensure_dirs
 
 USER_AGENT = "insurvas-market-finder/0.1 (+https://github.com/sweagon/insurvas-market-finder)"
 DEFAULT_TIMEOUT = httpx.Timeout(120.0, connect=30.0)
@@ -47,6 +47,7 @@ class FetchResult:
             "url": self.url,
             "final_url": self.final_url,
             "status_code": self.status_code,
+            "status": "ok" if self.status_code == 200 else "unexpected_status",
             "sha256": self.sha256,
             "bytes": self.bytes_len,
             "content_type": self.content_type,
@@ -100,6 +101,7 @@ def fetch_bytes(
     callers can record a graceful skip (see the ADR on inaccessible sources).
     """
     key = _cache_key(url)
+    ensure_dirs()
     body_path = CACHE / f"{key}{suffix}"
     meta_path = CACHE / f"{key}.json"
 
@@ -166,10 +168,12 @@ class Manifest:
             "retrieved_at": _utc_now(),
         }
 
-    def write(self, path: Path) -> None:
+    def write(self, path: Path, extra: dict[str, Any] | None = None) -> None:
         payload = {
             "generated_at": _utc_now(),
             "tool_version": "0.1.0",
             "entries": dict(sorted(self.entries.items())),
         }
+        if extra:
+            payload.update(extra)
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
