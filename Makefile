@@ -34,6 +34,10 @@ build-data: ## Build data, QA and the generated web catalogue (no topo)
 	uv run python -m pipeline.qa.report
 	uv run python -m tests.parity.generate
 
+.PHONY: brand
+brand: ## Re-derive logo, favicon and social assets from the source wordmark
+	uv run python scripts/derive_brand_assets.py
+
 .PHONY: web
 web: ## Build the production SPA bundle
 	cd web && npm run build

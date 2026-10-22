@@ -7,10 +7,10 @@ import {
   MapIcon,
   PanelLeft,
   Table2,
-  Target,
 } from "../icons";
 import { useStore, type ViewId } from "../../state/store";
 import { usePreferences } from "../providers/PreferencesProvider";
+import { Brand } from "./Brand";
 
 interface NavItem {
   id: ViewId;
@@ -56,14 +56,14 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
       style={{ borderColor: "var(--sidebar-border)" }}
     >
       <div className="flex items-center gap-2 px-4 py-4">
-        <span
-          className="flex h-8 w-8 items-center justify-center rounded-chip bg-accent text-onaccent"
-          aria-hidden
-        >
-          <Target size={18} />
+        <span className="xl:hidden">
+          <Brand tone={dark ? "dark" : "light"} variant="mark" className="h-8 w-8" />
         </span>
-        <span className="hidden xl:block text-h3 font-semibold tracking-tight">
-          Market Finder
+        <span className="hidden min-w-0 items-center gap-2 xl:flex">
+          <Brand tone={dark ? "dark" : "light"} className="h-5 w-auto shrink-0" />
+          <span className="truncate text-body-sm font-medium tracking-tight text-[var(--sidebar-text-secondary)]">
+            Market Finder
+          </span>
         </span>
       </div>
 

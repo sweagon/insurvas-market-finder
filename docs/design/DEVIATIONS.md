@@ -54,13 +54,15 @@ inspectable offline. Dropping bands would make the UI look more certain than
 the model is, which R6 forbids.
 
 **Contained by:** the map and table load `counties.json` (metric matrix) and
-`rankings.json` once; there is no per-interaction refetch. Budget enforcement
-and precompression are handled in the performance pass; the budget number is
-raised to the measured size with the reason recorded, rather than deleting
-honest uncertainty to fit a stale number.
+`rankings.json` once; there is no per-interaction refetch. The budget is raised
+to 800 kB (measured ~721 kB) with the reason recorded, rather than deleting
+honest uncertainty to fit a stale number. Initial JS is budgeted at 120 kB
+(measured ~100 kB) to leave room for routing and charts; the brief's hard cap is
+250 kB.
 
-**Open:** re-measure after precompression; if the compressed payload can meet a
-lower bound without dropping `p05/p95` or `p_top50`, lower the budget.
+**Open:** precompression and route-level splitting are handled in the
+performance pass; re-measure and lower both budgets if the compressed payload
+can meet a tighter bound without dropping `p05/p95` or `p_top50`.
 
 ---
 

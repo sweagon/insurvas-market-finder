@@ -6,6 +6,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { LensSwitcher } from "./LensSwitcher";
 import { Button } from "../primitives/Button";
 import { Tooltip } from "../primitives/tooltip";
+import { usePreferences } from "../providers/PreferencesProvider";
+import { Brand } from "./Brand";
 
 /**
  * Top bar (C.1), 56px. Breadcrumb, lens switcher, search with a Cmd/Ctrl+K
@@ -27,6 +29,7 @@ export function TopBar({
   onOpenMobileNav: () => void;
 }) {
   const { view, setView, lens, setLens, catalog } = useStore();
+  const { theme } = usePreferences();
 
   return (
     <header className="sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-3 overflow-hidden border-b border-subtle bg-surface1/90 px-3 backdrop-blur md:px-5">
@@ -38,6 +41,10 @@ export function TopBar({
       >
         <Menu size={20} aria-hidden />
       </button>
+
+      <span className="lg:hidden">
+        <Brand tone={theme} variant="mark" className="h-7 w-7" alt="Insurvas Market Finder" />
+      </span>
 
       <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-body-sm text-tertiary md:flex">
         <button type="button" onClick={() => setView("explore")} className="hover:text-primary">

@@ -46,13 +46,17 @@ export default [
   {
     name: "initial JS (gzip)",
     path: initialJsChunks(),
-    limit: "100 kB",
+    // The brief caps initial JS at 250 kB. 120 kB leaves room for the router
+    // and the charts kit while still forcing lazy loading of heavy views.
+    limit: "120 kB",
     gzip: true,
   },
   {
     name: "rankings payload (gzip)",
     path: "public/data/rankings.json",
-    limit: "600 kB",
+    // 3,144 counties x 5 lenses x P5/P50/P95 plus p_top50. Dropping the bands
+    // would fit a lower budget but hide the model's uncertainty (R6).
+    limit: "800 kB",
     gzip: true,
   },
   {
