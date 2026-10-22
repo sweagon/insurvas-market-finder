@@ -162,21 +162,27 @@ priors:
 
 subscores:
   size:
+    short_label: Size
     label: Size of the senior market
     description: "How many 60+ residents and how fast the pool is growing"
   affordability:
+    short_label: Affordability
     label: Ability to pay
     description: "Income, wealth composition and housing equity of 65+ households"
   need:
+    short_label: Need
     label: Need for coverage
     description: "Life-stage signals: spouse present, mortgage still on the home"
   reachability:
+    short_label: Reachability
     label: Reachability
     description: "Whether the pool can be reached efficiently through any channel"
   whitespace:
+    short_label: Whitespace
     label: Whitespace (inverse competition)
     description: "Insurance agency density per 1,000 residents aged 60+, inverted"
   insurability:
+    short_label: Insurability
     label: Insurability context
     description: "Area-level chronic-condition burden (adults 18+); not individual eligibility"
 
@@ -210,6 +216,7 @@ metrics:
   # ---------------- SIZE ----------------
   - id: pop_60plus
     label: Residents aged 60+
+    description: "How many people aged 60 or over live here. The core measure of market size."
     subscore: size
     source: popest
     table_field: "cc-est2025-syasex: single-year-of-age, sum(60+)"
@@ -224,6 +231,7 @@ metrics:
 
   - id: share_60plus
     label: Share of residents aged 60+
+    description: "What share of the local population is 60 or older. High shares signal an older, retirement-heavy market."
     subscore: size
     source: popest
     table_field: "cc-est2025-agesex: AGE6064 + AGE6569 + AGE7074 + AGE7579 + AGE8084 + AGE85PLUS / POPESTIMATE"
@@ -238,6 +246,7 @@ metrics:
 
   - id: growth_60plus
     label: Growth of 60+ population, 2020 to 2025
+    description: "How fast the 60+ population grew between 2020 and 2025. Growth means the market is getting bigger."
     subscore: size
     source: popest
     table_field: "cc-est2025-syasex: (pop60+_2025 / pop60+_2020) - 1"
@@ -253,6 +262,7 @@ metrics:
   # ---------------- AFFORDABILITY ----------------
   - id: income_65plus_median
     label: Median household income, householder 65+
+    description: "The typical income of households led by someone 65 or older. Higher income means more ability to pay a premium."
     subscore: affordability
     source: acs
     table_field: "B19049_005E (estimate), B19049_005M (MOE)"
@@ -267,6 +277,7 @@ metrics:
 
   - id: share_65_hh_75k
     label: Share of 65+ households with income $75k+
+    description: "The share of 65+ households earning $75,000 or more. A direct read on how many can afford a meaningful policy."
     subscore: affordability
     source: acs
     table_field: "B19037 age-of-householder x income; sum of 65+ bands with income >= 75,000 / 65+ total"
@@ -281,6 +292,7 @@ metrics:
 
   - id: irs_investment_income_per_return
     label: Interest, dividend, IRA and pension income per tax return
+    description: "Interest, dividends, IRA and pension income reported per tax return. A sign of retirement income and accumulated assets."
     subscore: affordability
     source: irs
     table_field: "A00300 (interest) + A00600 (dividends) + A01400 (IRA) + A01700 (pensions) / N1"
@@ -295,6 +307,7 @@ metrics:
 
   - id: non_earned_income_per_capita
     label: Dividends, interest and rent per resident
+    description: "Dividends, interest and rent per resident. A wealth-composition signal for the area."
     subscore: affordability
     source: bea
     table_field: "CAINC4 line 46 (dividends, interest, and rent) / total population"
@@ -309,6 +322,7 @@ metrics:
 
   - id: home_equity_65
     label: Housing equity proxy for 65+ owners (mortgage-free value)
+    description: "A proxy for how much housing wealth 65+ owners hold outright. Home equity is often the asset that funds a policy."
     subscore: affordability
     source: acs
     table_field: "B25027 (65+ owner units without mortgage / all 65+ owner units) x B25077 (median home value)"
@@ -324,6 +338,7 @@ metrics:
   # ---------------- NEED ----------------
   - id: spouse_share_65plus
     label: Share of 65+ adults in a household with a spouse present
+    description: "The share of 65+ adults living with a spouse. Couples are the core market for spouse and survivor protection."
     subscore: need
     source: acs
     table_field: "B09021_024 (65+ living with spouse or spouse of householder) / B09021_022 (65+ total in households)"
@@ -338,6 +353,7 @@ metrics:
 
   - id: mortgage_share_65_owners
     label: Share of 65+ owners still paying a mortgage
+    description: "The share of 65+ homeowners still paying a mortgage. A remaining mortgage is a concrete reason to keep coverage."
     subscore: need
     source: acs
     table_field: "B25027: 65+ with mortgage / (65+ with + without mortgage)"
@@ -352,6 +368,7 @@ metrics:
 
   - id: ssa_beneficiary_share_65plus
     label: Share of 65+ residents receiving Social Security benefits
+    description: "The share of 65+ residents receiving Social Security. A high share means income is a fixed benefit that is hard to replace, which raises the need for a guaranteed death benefit."
     subscore: need
     source: ssa_oasdi
     table_field: "SSA OASDI Table 4: beneficiaries aged 65 or older (men + women) / POPEST population aged 65+"
@@ -373,6 +390,7 @@ metrics:
   # ---------------- REACHABILITY ----------------
   - id: internet_65plus
     label: Share of 65+ households with internet subscription
+    description: "The share of 65+ households with an internet subscription. A proxy for how easily this market can be reached online."
     subscore: reachability
     source: acs
     table_field: "B28005 age x internet subscription; (B28005_016 dial-up alone + B28005_017 broadband) for 65+ / B28005_014 (65+ total)"
@@ -387,6 +405,7 @@ metrics:
 
   - id: density_60plus
     label: Residents aged 60+ per square mile
+    description: "Residents aged 60+ per square mile. Dense markets are cheaper to cover with field agents, events and local media."
     subscore: reachability
     source: popest
     table_field: "pop_60plus / ALAND (Census Gazetteer land area)"
@@ -402,6 +421,7 @@ metrics:
   # ---------------- WHITESPACE ----------------
   - id: agencies_per_1000_60plus
     label: Insurance agencies per 1,000 residents aged 60+
+    description: "Insurance agencies per 1,000 residents aged 60+. Fewer agencies means less competition for the same customers."
     subscore: whitespace
     source: cbp
     table_field: "cbp23co NAICS 524210 ESTAB / pop_60plus * 1000"
@@ -417,6 +437,7 @@ metrics:
   # ---------------- INSURABILITY ----------------
   - id: chronic_burden_composite
     label: Chronic-condition burden index (adults 18+)
+    description: "A standardised index of chronic-condition prevalence for adults 18+. Area context only; it is not an individual eligibility test."
     subscore: insurability
     source: places
     table_field: "PLACES crude prevalence: CHD, DIABETES, BPHIGH, CANCER, COPD; mean of per-measure z-scores across counties"
@@ -435,6 +456,7 @@ metrics:
 
   - id: risk_behaviour_composite
     label: Risk-behaviour burden index (adults 18+)
+    description: "A standardised index of modifiable health-risk behaviours for adults 18+. Area context only, never a decision about a person."
     subscore: insurability
     source: places
     table_field: "PLACES crude prevalence: OBESITY, CSMOKING, LPA (no leisure-time activity); mean of per-measure z-scores across counties"
@@ -452,6 +474,7 @@ metrics:
   # ------- CONTEXT / MODELED PRIORS (not scored) -------
   - id: expected_ownership_65
     label: Expected life-insurance ownership among 65+ households
+    description: "A modelled estimate of how many 65+ households already own life insurance, based on national survey rates applied to local incomes. A prior, not an observation."
     subscore: size
     source: acs
     table_field: "B19037 65+ income distribution x priors.limra_barometer_2026 ownership curve (household-level anchors: under $50k 0.29, $150k+ 0.64)"
@@ -467,6 +490,7 @@ metrics:
 
   - id: coverage_gap_households_60
     label: Estimated uninsured households with a 65+ householder
+    description: "A modelled estimate of 65+ households without life insurance. The size of the uninsured opportunity, not a count of buyers."
     subscore: size
     source: acs
     table_field: "households with 65+ householder x (1 - expected_ownership_65)"
@@ -482,6 +506,7 @@ metrics:
 
   - id: area_health_context
     label: "Area health context: poor physical or mental health (adults 18+)"
+    description: "The share of adults reporting poor physical or mental health. Shown for context only and never used in scoring."
     subscore: insurability
     source: places
     table_field: "PLACES MHLTH (poor mental health) + PHLTH (poor physical health) crude prevalence, mean, as a fraction"

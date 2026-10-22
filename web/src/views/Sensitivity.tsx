@@ -22,15 +22,15 @@ interface ScoredRow {
 }
 
 export default function Sensitivity() {
-  const { weights, setWeights, catalog, lens, counties, select } = useStore();
+  const { weights, setWeights, lens, counties, select } = useStore();
   const [local, setLocal] = useState<SubScoreWeights>(() => ({ ...weights }));
   const sum = useMemo(
     () => SUBSCORE_ORDER.reduce((s, k) => s + (local[k] || 0), 0),
     [local],
   );
   const base = useMemo(
-    () => weightsFor(catalog, lens),
-    [catalog, lens],
+    () => weightsFor(lens),
+    [lens],
   );
 
   // Re-sync the sliders when the active lens changes, otherwise the panel

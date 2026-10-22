@@ -120,6 +120,7 @@ def generate() -> None:
         encoding="utf-8",
     )
     _export_scoring_config(cfg)
+    _export_web_catalog(cfg)
 
 
 def _export_scoring_config(cfg) -> None:
@@ -137,7 +138,7 @@ def _export_scoring_config(cfg) -> None:
             lid: {
                 "label": lens.label,
                 "description": lens.description,
-                "weights": lens.weights.as_dict(),
+                "weights": dict(lens.weights),
                 "flip_insurance_sign": lens.flip_insurance_sign,
             }
             for lid, lens in cfg.lenses.items()
@@ -149,12 +150,74 @@ def _export_scoring_config(cfg) -> None:
                 "direction": m.direction,
                 "transform": m.transform,
                 "scored": m.scored,
-                "lens_weights": m.lens_weights.model_dump(),
+                "lens_weights": dict(m.lens_weights),
             }
             for m in cfg.metrics
         ],
     }
     target = paths.WEB / "src" / "score" / "config.generated.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(out, indent=2), encoding="utf-8")
+
+
+def _export_web_catalog(cfg) -> None:
+    """Emit the UI-facing catalogue (identity, labels, units, flags, order).
+
+    The SPA imports this at compile time so lens/sub-score ids are literal
+    types. It is generated from config/metrics.yaml, so a model change cannot
+    leave the frontend's unions or labels stale.
+    """
+    flags = [
+        "shrunk_agencies",
+        "shrunk_chronic",
+        "shrunk_risk",
+        "imputed_ssa_share",
+        "shrunk_ssa_share",
+    ]
+    out = {
+        "version": cfg.version,
+        "default_lens": cfg.default_lens_id,
+        "lens_order": cfg.lens_ids(),
+        "subscore_order": cfg.sub_score_ids(),
+        "units": sorted({m.unit for m in cfg.metrics}),
+        "flags": flags,
+        "subscores": {
+            sid: {
+                "label": s.short_label or s.label,
+                "long_label": s.label,
+                "description": s.description,
+            }
+            for sid, s in cfg.subscores.items()
+        },
+        "lenses": {
+            lid: {
+                "label": lens.short_label or lens.label,
+                "long_label": lens.label,
+                "description": lens.description,
+                "default": lens.default,
+                "weights": dict(lens.weights),
+                "flip_insurance_sign": lens.flip_insurance_sign,
+            }
+            for lid, lens in cfg.lenses.items()
+        },
+        "metrics": [
+            {
+                "id": m.id,
+                "label": m.label,
+                "description": m.description,
+                "subscore": m.subscore,
+                "source": m.source,
+                "unit": m.unit,
+                "vintage": m.vintage,
+                "direction": m.direction,
+                "scored": m.scored,
+                "modeled": m.modeled,
+                "lens_weights": dict(m.lens_weights),
+            }
+            for m in cfg.metrics
+        ],
+    }
+    target = paths.WEB / "src" / "data" / "catalog.generated.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(out, indent=2), encoding="utf-8")
 

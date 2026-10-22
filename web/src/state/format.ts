@@ -118,7 +118,7 @@ export function vintage(label: string, value: string | number): string {
 /** Missing value: em dash with a tooltip in the component */
 export const MISSING = "—";
 
-const UNIT_FORMATTERS: Record<string, (n: number | null | undefined) => string> = {
+export const UNIT_FORMATTERS: Record<string, (n: number | null | undefined) => string> = {
   people: pop,
   households: pop,
   usd: usd,

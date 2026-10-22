@@ -6,20 +6,15 @@ import { SegmentedControl } from "../design-system/primitives/tabs";
 import { usePreferences } from "../design-system/providers/PreferencesProvider";
 import { opportunityColor } from "../design-system/map/ramp";
 import { popCompact, score, stateAbbr } from "../state/format";
-import { SUBSCORE_LABEL } from "../state/lensMeta";
-import type { CountyRow, LensId } from "../data/types";
+import { SUBSCORE_LABEL, SUBSCORE_ORDER } from "../state/lensMeta";
+import type { CountyRow, LensId, SubScoreId } from "../data/types";
 
-type AxisId = "pop60" | "total" | "size" | "affordability" | "need" | "reachability" | "whitespace" | "insurability";
+type AxisId = "pop60" | "total" | SubScoreId;
 
 const AXES: { id: AxisId; label: string; log?: boolean }[] = [
   { id: "pop60", label: "60+ population", log: true },
   { id: "total", label: "Opportunity score" },
-  { id: "size", label: SUBSCORE_LABEL.size },
-  { id: "affordability", label: SUBSCORE_LABEL.affordability },
-  { id: "need", label: SUBSCORE_LABEL.need },
-  { id: "reachability", label: SUBSCORE_LABEL.reachability },
-  { id: "whitespace", label: SUBSCORE_LABEL.whitespace },
-  { id: "insurability", label: SUBSCORE_LABEL.insurability },
+  ...SUBSCORE_ORDER.map((id) => ({ id, label: SUBSCORE_LABEL[id] })),
 ];
 
 /** Value for one axis, or null when the sub-score was unavailable. */

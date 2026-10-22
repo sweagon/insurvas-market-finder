@@ -1,0 +1,490 @@
+{
+  "version": 3,
+  "default_lens": "volume",
+  "lens_order": [
+    "volume",
+    "balanced",
+    "final_expense",
+    "legacy_wealth",
+    "spouse_protection"
+  ],
+  "subscore_order": [
+    "size",
+    "affordability",
+    "need",
+    "reachability",
+    "whitespace",
+    "insurability"
+  ],
+  "units": [
+    "density",
+    "growth_rate",
+    "households",
+    "index",
+    "people",
+    "rate",
+    "share",
+    "usd"
+  ],
+  "flags": [
+    "shrunk_agencies",
+    "shrunk_chronic",
+    "shrunk_risk",
+    "imputed_ssa_share",
+    "shrunk_ssa_share"
+  ],
+  "subscores": {
+    "size": {
+      "label": "Size",
+      "long_label": "Size of the senior market",
+      "description": "How many 60+ residents and how fast the pool is growing"
+    },
+    "affordability": {
+      "label": "Affordability",
+      "long_label": "Ability to pay",
+      "description": "Income, wealth composition and housing equity of 65+ households"
+    },
+    "need": {
+      "label": "Need",
+      "long_label": "Need for coverage",
+      "description": "Life-stage signals: spouse present, mortgage still on the home"
+    },
+    "reachability": {
+      "label": "Reachability",
+      "long_label": "Reachability",
+      "description": "Whether the pool can be reached efficiently through any channel"
+    },
+    "whitespace": {
+      "label": "Whitespace",
+      "long_label": "Whitespace (inverse competition)",
+      "description": "Insurance agency density per 1,000 residents aged 60+, inverted"
+    },
+    "insurability": {
+      "label": "Insurability",
+      "long_label": "Insurability context",
+      "description": "Area-level chronic-condition burden (adults 18+); not individual eligibility"
+    }
+  },
+  "lenses": {
+    "volume": {
+      "label": "Volume",
+      "long_label": "Volume",
+      "description": "Biggest 60+ pools - where the most potential customers live",
+      "default": true,
+      "weights": {
+        "size": 40.0,
+        "affordability": 20.0,
+        "need": 12.0,
+        "reachability": 12.0,
+        "whitespace": 10.0,
+        "insurability": 6.0
+      },
+      "flip_insurance_sign": false
+    },
+    "balanced": {
+      "label": "Balanced",
+      "long_label": "Balanced",
+      "description": "Equal-footing trade-off across all six sub-scores",
+      "default": false,
+      "weights": {
+        "size": 30.0,
+        "affordability": 25.0,
+        "need": 15.0,
+        "reachability": 15.0,
+        "whitespace": 10.0,
+        "insurability": 5.0
+      },
+      "flip_insurance_sign": false
+    },
+    "final_expense": {
+      "label": "Final Expense / Guaranteed Issue",
+      "long_label": "Final Expense / Guaranteed Issue",
+      "description": "Deep need + ability to pay; higher area disease burden is neutral-to-positive (no underwriting)",
+      "default": false,
+      "weights": {
+        "size": 25.0,
+        "affordability": 30.0,
+        "need": 18.0,
+        "reachability": 12.0,
+        "whitespace": 8.0,
+        "insurability": 7.0
+      },
+      "flip_insurance_sign": true
+    },
+    "legacy_wealth": {
+      "label": "Legacy / Wealth",
+      "long_label": "Legacy / Wealth",
+      "description": "Affluent 65+ households with capacity for permanent life and estate planning",
+      "default": false,
+      "weights": {
+        "size": 20.0,
+        "affordability": 35.0,
+        "need": 10.0,
+        "reachability": 10.0,
+        "whitespace": 15.0,
+        "insurability": 10.0
+      },
+      "flip_insurance_sign": false
+    },
+    "spouse_protection": {
+      "label": "Spouse / Mortgage Protection",
+      "long_label": "Spouse / Mortgage Protection",
+      "description": "Couples with dependents and remaining housing obligations",
+      "default": false,
+      "weights": {
+        "size": 22.0,
+        "affordability": 20.0,
+        "need": 30.0,
+        "reachability": 13.0,
+        "whitespace": 10.0,
+        "insurability": 5.0
+      },
+      "flip_insurance_sign": false
+    }
+  },
+  "metrics": [
+    {
+      "id": "pop_60plus",
+      "label": "Residents aged 60+",
+      "description": "How many people aged 60 or over live here. The core measure of market size.",
+      "subscore": "size",
+      "source": "popest",
+      "unit": "people",
+      "vintage": "2025",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.6,
+        "balanced": 0.45,
+        "final_expense": 0.55,
+        "legacy_wealth": 0.55,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "share_60plus",
+      "label": "Share of residents aged 60+",
+      "description": "What share of the local population is 60 or older. High shares signal an older, retirement-heavy market.",
+      "subscore": "size",
+      "source": "popest",
+      "unit": "share",
+      "vintage": "2025",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.2,
+        "balanced": 0.25,
+        "final_expense": 0.2,
+        "legacy_wealth": 0.15,
+        "spouse_protection": 0.2
+      }
+    },
+    {
+      "id": "growth_60plus",
+      "label": "Growth of 60+ population, 2020 to 2025",
+      "description": "How fast the 60+ population grew between 2020 and 2025. Growth means the market is getting bigger.",
+      "subscore": "size",
+      "source": "popest",
+      "unit": "growth_rate",
+      "vintage": "2020-2025",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.2,
+        "balanced": 0.3,
+        "final_expense": 0.25,
+        "legacy_wealth": 0.3,
+        "spouse_protection": 0.3
+      }
+    },
+    {
+      "id": "income_65plus_median",
+      "label": "Median household income, householder 65+",
+      "description": "The typical income of households led by someone 65 or older. Higher income means more ability to pay a premium.",
+      "subscore": "affordability",
+      "source": "acs",
+      "unit": "usd",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.26,
+        "balanced": 0.25,
+        "final_expense": 0.22,
+        "legacy_wealth": 0.28,
+        "spouse_protection": 0.22
+      }
+    },
+    {
+      "id": "share_65_hh_75k",
+      "label": "Share of 65+ households with income $75k+",
+      "description": "The share of 65+ households earning $75,000 or more. A direct read on how many can afford a meaningful policy.",
+      "subscore": "affordability",
+      "source": "acs",
+      "unit": "share",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.22,
+        "balanced": 0.2,
+        "final_expense": 0.28,
+        "legacy_wealth": 0.28,
+        "spouse_protection": 0.23
+      }
+    },
+    {
+      "id": "irs_investment_income_per_return",
+      "label": "Interest, dividend, IRA and pension income per tax return",
+      "description": "Interest, dividends, IRA and pension income reported per tax return. A sign of retirement income and accumulated assets.",
+      "subscore": "affordability",
+      "source": "irs",
+      "unit": "usd",
+      "vintage": "TY2023",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.22,
+        "balanced": 0.18,
+        "final_expense": 0.14,
+        "legacy_wealth": 0.16,
+        "spouse_protection": 0.18
+      }
+    },
+    {
+      "id": "non_earned_income_per_capita",
+      "label": "Dividends, interest and rent per resident",
+      "description": "Dividends, interest and rent per resident. A wealth-composition signal for the area.",
+      "subscore": "affordability",
+      "source": "bea",
+      "unit": "usd",
+      "vintage": "2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.15,
+        "balanced": 0.15,
+        "final_expense": 0.1,
+        "legacy_wealth": 0.2,
+        "spouse_protection": 0.1
+      }
+    },
+    {
+      "id": "home_equity_65",
+      "label": "Housing equity proxy for 65+ owners (mortgage-free value)",
+      "description": "A proxy for how much housing wealth 65+ owners hold outright. Home equity is often the asset that funds a policy.",
+      "subscore": "affordability",
+      "source": "acs",
+      "unit": "usd",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.15,
+        "balanced": 0.22,
+        "final_expense": 0.26,
+        "legacy_wealth": 0.08,
+        "spouse_protection": 0.27
+      }
+    },
+    {
+      "id": "spouse_share_65plus",
+      "label": "Share of 65+ adults in a household with a spouse present",
+      "description": "The share of 65+ adults living with a spouse. Couples are the core market for spouse and survivor protection.",
+      "subscore": "need",
+      "source": "acs",
+      "unit": "share",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.4,
+        "balanced": 0.35,
+        "final_expense": 0.3,
+        "legacy_wealth": 0.35,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "mortgage_share_65_owners",
+      "label": "Share of 65+ owners still paying a mortgage",
+      "description": "The share of 65+ homeowners still paying a mortgage. A remaining mortgage is a concrete reason to keep coverage.",
+      "subscore": "need",
+      "source": "acs",
+      "unit": "share",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.4,
+        "balanced": 0.45,
+        "final_expense": 0.5,
+        "legacy_wealth": 0.45,
+        "spouse_protection": 0.3
+      }
+    },
+    {
+      "id": "ssa_beneficiary_share_65plus",
+      "label": "Share of 65+ residents receiving Social Security benefits",
+      "description": "The share of 65+ residents receiving Social Security. A high share means income is a fixed benefit that is hard to replace, which raises the need for a guaranteed death benefit.",
+      "subscore": "need",
+      "source": "ssa_oasdi",
+      "unit": "share",
+      "vintage": "December 2025",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.2,
+        "balanced": 0.2,
+        "final_expense": 0.2,
+        "legacy_wealth": 0.2,
+        "spouse_protection": 0.2
+      }
+    },
+    {
+      "id": "internet_65plus",
+      "label": "Share of 65+ households with internet subscription",
+      "description": "The share of 65+ households with an internet subscription. A proxy for how easily this market can be reached online.",
+      "subscore": "reachability",
+      "source": "acs",
+      "unit": "share",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.55,
+        "balanced": 0.5,
+        "final_expense": 0.45,
+        "legacy_wealth": 0.45,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "density_60plus",
+      "label": "Residents aged 60+ per square mile",
+      "description": "Residents aged 60+ per square mile. Dense markets are cheaper to cover with field agents, events and local media.",
+      "subscore": "reachability",
+      "source": "popest",
+      "unit": "density",
+      "vintage": "2025",
+      "direction": "higher_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.45,
+        "balanced": 0.5,
+        "final_expense": 0.55,
+        "legacy_wealth": 0.55,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "agencies_per_1000_60plus",
+      "label": "Insurance agencies per 1,000 residents aged 60+",
+      "description": "Insurance agencies per 1,000 residents aged 60+. Fewer agencies means less competition for the same customers.",
+      "subscore": "whitespace",
+      "source": "cbp",
+      "unit": "rate",
+      "vintage": "2023",
+      "direction": "lower_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 1.0,
+        "balanced": 1.0,
+        "final_expense": 1.0,
+        "legacy_wealth": 1.0,
+        "spouse_protection": 1.0
+      }
+    },
+    {
+      "id": "chronic_burden_composite",
+      "label": "Chronic-condition burden index (adults 18+)",
+      "description": "A standardised index of chronic-condition prevalence for adults 18+. Area context only; it is not an individual eligibility test.",
+      "subscore": "insurability",
+      "source": "places",
+      "unit": "index",
+      "vintage": "2025",
+      "direction": "lower_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.5,
+        "balanced": 0.5,
+        "final_expense": 0.5,
+        "legacy_wealth": 0.5,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "risk_behaviour_composite",
+      "label": "Risk-behaviour burden index (adults 18+)",
+      "description": "A standardised index of modifiable health-risk behaviours for adults 18+. Area context only, never a decision about a person.",
+      "subscore": "insurability",
+      "source": "places",
+      "unit": "index",
+      "vintage": "2025",
+      "direction": "lower_is_better",
+      "scored": true,
+      "modeled": false,
+      "lens_weights": {
+        "volume": 0.5,
+        "balanced": 0.5,
+        "final_expense": 0.5,
+        "legacy_wealth": 0.5,
+        "spouse_protection": 0.5
+      }
+    },
+    {
+      "id": "expected_ownership_65",
+      "label": "Expected life-insurance ownership among 65+ households",
+      "description": "A modelled estimate of how many 65+ households already own life insurance, based on national survey rates applied to local incomes. A prior, not an observation.",
+      "subscore": "size",
+      "source": "acs",
+      "unit": "share",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": false,
+      "modeled": true,
+      "lens_weights": {}
+    },
+    {
+      "id": "coverage_gap_households_60",
+      "label": "Estimated uninsured households with a 65+ householder",
+      "description": "A modelled estimate of 65+ households without life insurance. The size of the uninsured opportunity, not a count of buyers.",
+      "subscore": "size",
+      "source": "acs",
+      "unit": "households",
+      "vintage": "2020-2024",
+      "direction": "higher_is_better",
+      "scored": false,
+      "modeled": true,
+      "lens_weights": {}
+    },
+    {
+      "id": "area_health_context",
+      "label": "Area health context: poor physical or mental health (adults 18+)",
+      "description": "The share of adults reporting poor physical or mental health. Shown for context only and never used in scoring.",
+      "subscore": "insurability",
+      "source": "places",
+      "unit": "share",
+      "vintage": "2025",
+      "direction": "lower_is_better",
+      "scored": false,
+      "modeled": false,
+      "lens_weights": {}
+    }
+  ]
+}

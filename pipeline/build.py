@@ -222,6 +222,7 @@ def _metric_catalog(cfg) -> list[dict]:
         {
             "id": m.id,
             "label": m.label,
+            "description": m.description,
             "subscore": m.subscore,
             "source": m.source,
             "table_field": m.table_field,
@@ -499,6 +500,11 @@ def _write_columnar_json(
         "meta": meta,
         "vintages": cfg.vintages.model_dump(),
         "params": cfg.params.model_dump(),
+        "default_lens": cfg.default_lens_id,
+        "subscore_order": cfg.sub_score_ids(),
+        "lens_order": cfg.lens_ids(),
+        "flags": [f for f in FLAG_COLS if f in counties["columns"]],
+        "units": sorted({m.unit for m in cfg.metrics}),
         "subscores": {
             sid: {"label": s.label, "description": s.description}
             for sid, s in cfg.subscores.items()
@@ -508,7 +514,7 @@ def _write_columnar_json(
                 "label": lens.label,
                 "description": lens.description,
                 "default": lens.default,
-                "weights": lens.weights.as_dict(),
+                "weights": dict(lens.weights),
             }
             for lid, lens in cfg.lenses.items()
         },

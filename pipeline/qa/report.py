@@ -73,7 +73,7 @@ def _weight_problems(cfg) -> list[str]:
     for lens_id in cfg.lenses:
         for sub in cfg.sub_score_ids():
             ids = [m for m in cfg.scored_metrics if m.subscore == sub]
-            total = sum(float(getattr(m.lens_weights, lens_id)) for m in ids)
+            total = sum(float(m.lens_weights.get(lens_id, 0.0)) for m in ids)
             if ids and abs(total - 1.0) > 1e-9:
                 problems.append(
                     f"lens '{lens_id}' sub-score '{sub}' weights sum to {total:.4f}, not 1.0"

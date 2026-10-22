@@ -1,44 +1,66 @@
-import type { LensId, SubScoreId } from "../data/types";
+import catalog from "../data/catalog.generated.json";
+import { LENS_IDS, SUB_SCORE_IDS, type LensId, type SubScoreId } from "../data/types";
 
-export const LENS_ORDER: LensId[] = [
-  "volume",
-  "balanced",
-  "final_expense",
-  "legacy_wealth",
-  "spouse_protection",
+/**
+ * Identity, order and labels are generated from config/metrics.yaml; only the
+ * presentation palette lives here. A new lens or sub-score picks up the next
+ * Okabe-Ito slot automatically, and `lensMeta.test.ts` fails if two ids within
+ * one dimension share a colour.
+ */
+export const LENS_ORDER: LensId[] = [...LENS_IDS];
+export const SUBSCORE_ORDER: SubScoreId[] = [...SUB_SCORE_IDS];
+
+const LENS_COLOR_KNOWN: Record<string, string> = {
+  volume: "#0072b2",
+  balanced: "#56b4e9",
+  final_expense: "#e69f00",
+  legacy_wealth: "#cc79a7",
+  spouse_protection: "#009e73",
+};
+
+const SUBSCORE_COLOR_KNOWN: Record<string, string> = {
+  size: "#56b4e9",
+  affordability: "#e69f00",
+  need: "#cc79a7",
+  reachability: "#009e73",
+  whitespace: "#0072b2",
+  insurability: "#f0e442",
+};
+
+/** Colourblind-safe fallback for ids added after this file was written. */
+const PALETTE = [
+  "#0072b2",
+  "#56b4e9",
+  "#e69f00",
+  "#cc79a7",
+  "#009e73",
+  "#f0e442",
+  "#b8a800",
+  "#d55e00",
 ];
 
-export const LENS_COLOR: Record<LensId, string> = {
-  volume: "var(--lens-volume)",
-  balanced: "var(--lens-balanced)",
-  final_expense: "var(--lens-final_expense)",
-  legacy_wealth: "var(--lens-legacy_wealth)",
-  spouse_protection: "var(--lens-spouse_protection)",
-};
+function colourMap(
+  ids: readonly string[],
+  known: Record<string, string>,
+): Record<string, string> {
+  return Object.fromEntries(
+    ids.map((id, i) => [id, known[id] ?? PALETTE[i % PALETTE.length]]),
+  );
+}
 
-export const SUBSCORE_ORDER: SubScoreId[] = [
-  "size",
-  "affordability",
-  "need",
-  "reachability",
-  "whitespace",
-  "insurability",
-];
+export const LENS_COLOR = colourMap(LENS_ORDER, LENS_COLOR_KNOWN) as Record<
+  LensId,
+  string
+>;
+export const SUBSCORE_COLOR = colourMap(
+  SUBSCORE_ORDER,
+  SUBSCORE_COLOR_KNOWN,
+) as Record<SubScoreId, string>;
 
-export const SUBSCORE_COLOR: Record<SubScoreId, string> = {
-  size: "var(--sub-size)",
-  affordability: "var(--sub-affordability)",
-  need: "var(--sub-need)",
-  reachability: "var(--sub-reachability)",
-  whitespace: "var(--sub-whitespace)",
-  insurability: "var(--sub-insurability)",
-};
+export const SUBSCORE_LABEL = Object.fromEntries(
+  SUBSCORE_ORDER.map((id) => [id, catalog.subscores[id].label]),
+) as Record<SubScoreId, string>;
 
-export const SUBSCORE_LABEL: Record<SubScoreId, string> = {
-  size: "Size",
-  affordability: "Affordability",
-  need: "Need",
-  reachability: "Reachability",
-  whitespace: "Whitespace",
-  insurability: "Insurability",
-};
+export const LENS_LABEL = Object.fromEntries(
+  LENS_ORDER.map((id) => [id, catalog.lenses[id].label]),
+) as Record<LensId, string>;

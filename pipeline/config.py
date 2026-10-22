@@ -19,54 +19,29 @@ CONFIG_PATH = ROOT / "config" / "metrics.yaml"
 Direction = Literal["higher_is_better", "lower_is_better"]
 Transform = Literal["none", "log", "winsor_log"]
 MoeMethod = Literal["none", "acs_api", "derived_prop", "derived_ratio"]
-SubScoreId = Literal["size", "affordability", "need", "reachability", "whitespace", "insurability"]
-LensId = Literal["volume", "balanced", "final_expense", "legacy_wealth", "spouse_protection"]
-
-
-class LensWeights(BaseModel):
-    """Weight given to each sub-score inside one lens. Must sum to 1.0."""
-
-    size: float
-    affordability: float
-    need: float
-    reachability: float
-    whitespace: float
-    insurability: float
-
-    def as_dict(self) -> dict[str, float]:
-        return {
-            "size": self.size,
-            "affordability": self.affordability,
-            "need": self.need,
-            "reachability": self.reachability,
-            "whitespace": self.whitespace,
-            "insurability": self.insurability,
-        }
+# Sub-score and lens ids are not enumerated here: they come from
+# config/metrics.yaml so adding one is a config change, not a code change.
 
 
 class Lens(BaseModel):
     id: str = ""
     label: str
+    # Compact label for the switcher and table headers.
+    short_label: str = ""
     description: str
     default: bool = False
-    weights: LensWeights
+    # Sub-score id -> weight. Validated against the configured sub-scores and
+    # normalised to 100 in config/metrics.yaml.
+    weights: dict[str, float]
     flip_insurance_sign: bool = False
-
-
-class MetricLensWeights(BaseModel):
-    """How much this metric contributes inside its own sub-score, per lens."""
-
-    volume: float = 0.0
-    balanced: float = 0.0
-    final_expense: float = 0.0
-    legacy_wealth: float = 0.0
-    spouse_protection: float = 0.0
 
 
 class Metric(BaseModel):
     id: str
     label: str
-    subscore: SubScoreId
+    # One or two plain-English sentences for the UI tooltip (Part G.1).
+    description: str = ""
+    subscore: str
     source: str
     table_field: str
     vintage: str
@@ -76,7 +51,9 @@ class Metric(BaseModel):
     moe: MoeMethod
     scored: bool = True
     modeled: bool = False
-    lens_weights: MetricLensWeights = Field(default_factory=MetricLensWeights)
+    # Lens id -> weight inside this metric's sub-score. A lens that is not
+    # listed scores this metric at zero (it drops out of that lens).
+    lens_weights: dict[str, float] = Field(default_factory=dict)
     caveats: str = ""
     # Per-metric override of the global coverage floor. Set this when a source
     # has a known, documented gap (e.g. a release that does not cover two
@@ -105,6 +82,8 @@ class Params(BaseModel):
 class SubScore(BaseModel):
     id: str = ""
     label: str
+    # Compact label for chart axes and table headers.
+    short_label: str = ""
     description: str
 
 
@@ -171,7 +150,12 @@ class MetricsConfig(_Raw):
             raise KeyError(f"Unknown metric id: {metric_id!r}") from exc
 
     def sub_score_ids(self) -> list[str]:
-        return ["size", "affordability", "need", "reachability", "whitespace", "insurability"]
+        """Sub-score ids in config order (the universal axis order)."""
+        return list(self.subscores)
+
+    def lens_ids(self) -> list[str]:
+        """Lens ids in config order."""
+        return list(self.lenses)
 
     def coverage_floor(self, metric: Metric) -> float:
         """The share of counties a metric must be present for.
@@ -185,7 +169,7 @@ class MetricsConfig(_Raw):
 
     def lens_weights_fraction(self, lens_id: str) -> dict[str, float]:
         """Sub-score weights for a lens as fractions in [0, 1] summing to 1.0."""
-        raw = self.lenses[lens_id].weights.as_dict()
+        raw = self.lenses[lens_id].weights
         total = sum(raw.values()) or 1.0
         return {k: v / total for k, v in raw.items()}
 
@@ -194,7 +178,7 @@ class MetricsConfig(_Raw):
         out: dict[str, float] = {}
         for sub in self.sub_score_ids():
             ids = [m for m in self.scored_metrics if m.subscore == sub]
-            weights = {m.id: float(getattr(m.lens_weights, lens_id)) for m in ids}
+            weights = {m.id: float(m.lens_weights.get(lens_id, 0.0)) for m in ids}
             total = sum(weights.values())
             if total <= 0:
                 continue
@@ -223,12 +207,47 @@ def _inject_ids(raw: dict[str, Any]) -> None:
 
 
 def _validate_weights(cfg: MetricsConfig) -> None:
-    """Every lens's sub-score weights must sum to 100; every metric weight >= 0."""
+    """Validate the config as a graph, not as a fixed set of known ids.
+
+    Every lens must cover exactly the configured sub-scores and sum to 100,
+    every metric must point at a configured sub-score and only at configured
+    lenses, and every scored metric must have at least one non-zero weight.
+    These checks are what make adding a sub-score or lens a safe config edit.
+    """
+    sub_ids = set(cfg.sub_score_ids())
+    lens_ids = set(cfg.lens_ids())
+
+    if not sub_ids:
+        raise ValueError("config defines no sub-scores")
+    if not lens_ids:
+        raise ValueError("config defines no lenses")
+
     for lens in cfg.lenses.values():
-        total = sum(lens.weights.as_dict().values())
+        missing = sub_ids - set(lens.weights)
+        extra = set(lens.weights) - sub_ids
+        if missing or extra:
+            raise ValueError(
+                f"Lens {lens.id!r} weights must cover exactly {sorted(sub_ids)}; "
+                f"missing={sorted(missing)}, unknown={sorted(extra)}"
+            )
+        if any(w < 0 for w in lens.weights.values()):
+            raise ValueError(f"Lens {lens.id!r} has a negative sub-score weight")
+        total = sum(lens.weights.values())
         if abs(total - 100.0) > 1e-6:
             raise ValueError(f"Lens {lens.id!r} sub-score weights sum to {total}, expected 100")
+
     for metric in cfg.metrics:
-        for lens_id, w in metric.lens_weights.model_dump().items():
+        if metric.subscore not in sub_ids:
+            raise ValueError(
+                f"Metric {metric.id!r} points at unknown sub-score {metric.subscore!r}"
+            )
+        unknown = set(metric.lens_weights) - lens_ids
+        if unknown:
+            raise ValueError(
+                f"Metric {metric.id!r} has weights for unknown lenses {sorted(unknown)}"
+            )
+        for lens_id, w in metric.lens_weights.items():
             if w < 0:
                 raise ValueError(f"Metric {metric.id!r} has negative weight in lens {lens_id!r}")
+        if metric.scored and sum(metric.lens_weights.values()) <= 0:
+            raise ValueError(f"Scored metric {metric.id!r} has no lens weight")

@@ -26,7 +26,7 @@ def test_shipped_config_has_no_weight_problems(cfg) -> None:
 def test_weight_problem_is_detected(cfg) -> None:
     target = next(m for m in cfg.metrics if m.subscore == "size")
     broken_target = target.model_copy(
-        update={"lens_weights": target.lens_weights.model_copy(update={"volume": 0.9})}
+        update={"lens_weights": {**target.lens_weights, "volume": 0.9}}
     )
     metrics = tuple(broken_target if m.id == target.id else m for m in cfg.metrics)
     problems = _weight_problems(cfg.model_copy(update={"metrics": metrics}))

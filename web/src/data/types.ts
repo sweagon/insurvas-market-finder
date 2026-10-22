@@ -1,37 +1,36 @@
-export type LensId =
-  | "volume"
-  | "balanced"
-  | "final_expense"
-  | "legacy_wealth"
-  | "spouse_protection";
+import catalog from "./catalog.generated.json";
 
-export type SubScoreId =
-  | "size"
-  | "affordability"
-  | "need"
-  | "reachability"
-  | "whitespace"
-  | "insurability";
+/**
+ * Identity comes from `catalog.generated.json`, which the pipeline writes from
+ * config/metrics.yaml. Adding a lens, sub-score or metric is a config change:
+ * the unions, order and labels follow automatically (see
+ * docs/design/UI_LIVE_CHANGE_PLAYBOOK.md).
+ */
+export type LensId = keyof typeof catalog.lenses;
+export type SubScoreId = keyof typeof catalog.subscores;
 
-export const SUB_SCORE_IDS: readonly SubScoreId[] = [
-  "size",
-  "affordability",
-  "need",
-  "reachability",
-  "whitespace",
-  "insurability",
-];
+export const DEFAULT_LENS = catalog.default_lens as LensId;
+export const LENS_IDS = catalog.lens_order as readonly LensId[];
+export const SUB_SCORE_IDS = catalog.subscore_order as readonly SubScoreId[];
+/** Column names in counties.json that are booleans, not metrics. */
+export const FLAG_COLUMNS: readonly string[] = catalog.flags;
+/** Every unit the catalogue declares; format.ts must handle each one. */
+export const CATALOG_UNITS: readonly string[] = catalog.units;
 
 export interface LensInfo {
   label: string;
+  long_label?: string;
   description: string;
   default?: boolean;
-  weights?: Partial<Record<SubScoreId, number>>;
+  weights?: Record<string, number>;
+  flip_insurance_sign?: boolean;
 }
 
 export interface MetricMeta {
   id: string;
   label: string;
+  /** Plain-English explanation for the metric tooltip (Part G.1). */
+  description: string;
   subscore: SubScoreId;
   source: string;
   table_field: string;
@@ -47,6 +46,7 @@ export interface MetricMeta {
 
 export interface SubScoreMeta {
   label: string;
+  long_label?: string;
   description: string;
 }
 
@@ -86,6 +86,11 @@ export interface MetaCatalog {
   meta: BuildMeta;
   vintages: Record<string, string | number>;
   params: BuildParams;
+  default_lens: LensId;
+  subscore_order: SubScoreId[];
+  lens_order: LensId[];
+  flags: string[];
+  units: string[];
   subscores: Record<SubScoreId, SubScoreMeta>;
   lenses: Record<LensId, LensInfo>;
   metrics: MetricMeta[];

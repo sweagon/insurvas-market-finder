@@ -1,7 +1,7 @@
 {
-  "built_at": "2026-10-22T09:20:27.583337+00:00",
+  "built_at": "2026-10-22T09:40:49.693525+00:00",
   "config_version": 3,
-  "config_hash": "b698a85e4a0033a7",
+  "config_hash": "8f00e5ea9b22e145",
   "vintages": {
     "acs": "2020-2024",
     "popest": 2025,
@@ -32,5 +32,5 @@
     "spouse_protection": 187
   },
   "min_coverage": 0.9,
-  "duration_s": 210.1
+  "duration_s": 232.8
 }

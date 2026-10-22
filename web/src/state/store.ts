@@ -1,5 +1,13 @@
 import { create } from "zustand";
-import type { CountyRow, LensId, MetaCatalog, StateRow, SubScoreId } from "../data/types";
+import catalog from "../data/catalog.generated.json";
+import {
+  DEFAULT_LENS,
+  type CountyRow,
+  type LensId,
+  type MetaCatalog,
+  type StateRow,
+  type SubScoreId,
+} from "../data/types";
 import type { Source } from "../data/load";
 
 export type ViewId =
@@ -64,34 +72,18 @@ interface State {
 export const MAX_COMPARE = 4;
 
 /**
- * Fallback sub-score weights.
- *
- * These are only a placeholder for the moment before the metric catalogue
- * arrives. Every configured lens ships its own weights in `meta.json`, and
- * `setData`/`setLens` overwrite these wholesale - see `weightsFor`.
+ * Sub-score weights come from the generated catalogue, never from a literal
+ * in this file. `DEFAULT_WEIGHTS` is the default lens; `weightsFor(lens)` is
+ * the live value used by the mixer and the worker.
  */
 export const DEFAULT_WEIGHTS: SubScoreWeights = {
-  size: 25,
-  affordability: 20,
-  need: 15,
-  reachability: 15,
-  whitespace: 15,
-  insurability: 10,
+  ...(catalog.lenses[DEFAULT_LENS].weights as Record<SubScoreId, number>),
 };
 
-/**
- * Resolve the effective sub-score weights for a lens.
- *
- * Configured lens weights are a partial override on top of `DEFAULT_WEIGHTS`,
- * so a lens that only tunes two sub-scores still scores all six.
- */
-export function weightsFor(
-  catalog: MetaCatalog | null,
-  lens: LensId,
-): SubScoreWeights {
-  const lensWeights = catalog?.lenses?.[lens]?.weights;
-  if (!lensWeights) return { ...DEFAULT_WEIGHTS };
-  return { ...DEFAULT_WEIGHTS, ...lensWeights } as SubScoreWeights;
+export function weightsFor(lens: LensId): SubScoreWeights {
+  return {
+    ...(catalog.lenses[lens].weights as Record<SubScoreId, number>),
+  };
 }
 
 export const useStore = create<State>((set, get) => ({
@@ -99,7 +91,7 @@ export const useStore = create<State>((set, get) => ({
   catalog: null,
   counties: [],
   states: [],
-  lens: "volume",
+  lens: DEFAULT_LENS,
   weights: { ...DEFAULT_WEIGHTS },
   view: "explore",
   selectedFips: null,
@@ -117,12 +109,12 @@ export const useStore = create<State>((set, get) => ({
       states,
       loaded: true,
       loadError: null,
-      weights: weightsFor(catalog, lens),
+      weights: weightsFor(lens),
     });
   },
   setLoadError: (loadError) => set({ loadError }),
   setLens: (lens) =>
-    set({ lens, weights: weightsFor(get().catalog, lens) }),
+    set({ lens, weights: weightsFor(lens) }),
   setView: (view) => set({ view }),
   setWeights: (weights) => set({ weights }),
   select: (selectedFips) => set({ selectedFips }),
