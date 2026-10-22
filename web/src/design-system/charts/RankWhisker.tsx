@@ -13,6 +13,8 @@ export function RankWhisker({
   color = "var(--accent)",
   className,
   showValues = false,
+  min = 0,
+  max = 100,
 }: {
   p05: number;
   p50: number;
@@ -21,15 +23,18 @@ export function RankWhisker({
   color?: string;
   className?: string;
   showValues?: boolean;
+  min?: number;
+  max?: number;
 }) {
   const id = useId();
-  const clamp = (v: number) => Math.max(0, Math.min(100, v));
+  const span = max - min || 1;
+  const clamp = (v: number) => Math.max(min, Math.min(max, v));
   const lo = clamp(Number.isFinite(p05) ? p05 : p50);
   const hi = clamp(Number.isFinite(p95) ? p95 : p50);
   const mid = clamp(Number.isFinite(p50) ? p50 : (lo + hi) / 2);
   const width = 120;
   const height = 16;
-  const x = (v: number) => 4 + (v / 100) * (width - 8);
+  const x = (v: number) => 4 + ((v - min) / span) * (width - 8);
 
   return (
     <div className={cn("inline-flex items-center gap-2", className)}>

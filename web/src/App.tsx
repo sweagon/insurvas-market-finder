@@ -9,6 +9,7 @@ import { TopBar } from "./design-system/patterns/TopBar";
 import { BottomTabBar } from "./design-system/patterns/BottomTabBar";
 import { CompareTray } from "./design-system/patterns/CompareTray";
 import { StaleDataBanner } from "./design-system/patterns/StaleDataBanner";
+import { FooterBar } from "./design-system/patterns/FooterBar";
 import { EmptyState } from "./design-system/patterns/states";
 import { Monogram, RankBadge, ScoreChip } from "./design-system/primitives/badges";
 import { stateAbbr, popCompact } from "./state/format";
@@ -165,6 +166,7 @@ function Shell() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        <FooterBar />
         <CompareTray />
       </main>
       <BottomTabBar onMore={() => setMobileNavOpen(true)} />

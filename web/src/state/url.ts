@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useStore } from "./store";
 import { LENS_ORDER } from "./lensMeta";
@@ -15,7 +15,7 @@ export function useUrlSync(): void {
     useStore();
   const [params, setParams] = useSearchParams();
   const hydrated = useRef(false);
-  const [ready, setReady] = useState(false);
+  const skipReflect = useRef(true);
 
   // Hydrate once from the URL.
   useEffect(() => {
@@ -38,15 +38,18 @@ export function useUrlSync(): void {
     }
     const minScore = params.get("score");
     if (minScore && !Number.isNaN(Number(minScore))) setFilter("minScore", Number(minScore));
-    // Reflect only after the hydrated values have rendered, otherwise this
-    // commit would write the pre-hydration defaults back over the URL.
-    setReady(true);
   }, [params, setLens, select, setFilter, toggleCompare]);
 
   // Reflect state back into the URL. A path route already carries the FIPS, so
   // do not duplicate it as ?area=.
   useEffect(() => {
-    if (!ready) return;
+    // The first commit reads pre-hydration defaults; writing them would erase
+    // the link. The store update above re-renders, and this effect runs again
+    // with the hydrated values.
+    if (skipReflect.current) {
+      skipReflect.current = false;
+      return;
+    }
     const next = new URLSearchParams();
     if (lens !== DEFAULT_LENS) next.set("lens", lens);
     if (selectedFips && !fipsFromPath(window.location.pathname)) next.set("area", selectedFips);
@@ -57,5 +60,5 @@ export function useUrlSync(): void {
     if (next.toString() !== params.toString()) {
       setParams(next, { replace: true });
     }
-  }, [ready, lens, selectedFips, compare, filters, params, setParams]);
+  }, [lens, selectedFips, compare, filters, params, setParams]);
 }

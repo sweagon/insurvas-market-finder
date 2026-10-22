@@ -7,14 +7,18 @@ import { Slider } from "../design-system/primitives/Slider";
 import { KpiCell, KpiStrip } from "../design-system/patterns/kpi";
 import { ScoreChip, RankBadge, Monogram } from "../design-system/primitives/badges";
 import { Input } from "../design-system/primitives/inputs";
-import { VirtualList } from "../design-system/primitives/VirtualList";
-import { popCompact, scoreRange, score, stateAbbr } from "../state/format";
-import { LENS_COLOR } from "../state/lensMeta";
-import { useState } from "react";
+import { DataTable, type DataTableColumn } from "../design-system/patterns/DataTable";
+import { RankWhisker } from "../design-system/charts";
+import { popCompact, score, pct, stateAbbr } from "../state/format";
+import { LENS_COLOR, SUBSCORE_LABEL, SUBSCORE_ORDER } from "../state/lensMeta";
+import { rankingsToCsv, downloadCsv } from "../state/export";
+import type { CountyRow } from "../data/types";
+import { useMemo as useColumns, useState } from "react";
 
 export default function Rankings() {
-  const { counties, lens, selectedFips, select, toggleCompare, compare, filters, setFilter, clearFilters } = useStore();
+  const { counties, lens, catalog, select, toggleCompare, compare, filters, setFilter, clearFilters } = useStore();
   const [view, setView] = useState<"table" | "cards">("table");
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   const list = useMemo(() => {
     let out = counties.filter((c) => c.scores?.[lens]?.eligible);
@@ -34,6 +38,107 @@ export default function Rankings() {
   }, [counties]);
 
   const dirty = filters.states.length > 0 || filters.minPop60 > 2000 || filters.minScore > 0 || filters.query.length > 0;
+
+  const columns = useColumns<DataTableColumn<CountyRow>[]>(() => {
+    const maxRank = Math.max(1, counties.filter((c) => c.scores[lens].eligible).length);
+    const rankValue = (c: CountyRow) => c.scores[lens].rank ?? maxRank;
+    const confidence = (c: CountyRow) => {
+      const s = c.scores[lens];
+      const width = (s.p95 ?? 0) - (s.p05 ?? 0);
+      return width <= 8 ? "Tight" : width <= 16 ? "Moderate" : "Wide";
+    };
+    return [
+      {
+        id: "area",
+        header: "Area",
+        width: 250,
+        sticky: true,
+        sortValue: (c) => c.scores[lens].rank ?? 99_999,
+        cell: (c) => {
+          const s = c.scores[lens];
+          return (
+            <span className="flex min-w-0 items-center gap-2">
+              <RankBadge rank={s.rank} />
+              <Monogram abbr={stateAbbr(c.state)} size={24} color={LENS_COLOR[lens]} />
+              <span className="min-w-0">
+                <span className="block truncate text-primary">{c.name}</span>
+                <span className="block truncate text-caption text-tertiary">{c.state}</span>
+              </span>
+            </span>
+          );
+        },
+      },
+      {
+        id: "score",
+        header: "Score",
+        width: 92,
+        align: "right",
+        sortValue: (c) => c.scores[lens].total ?? -1,
+        cell: (c) => <ScoreChip value={c.scores[lens].total} />,
+      },
+      {
+        id: "rank_range",
+        header: "Rank range",
+        width: 150,
+        sortValue: (c) => c.scores[lens].rank_p50 ?? maxRank,
+        cell: (c) => {
+          const s = c.scores[lens];
+          return Number.isFinite(s.rank_p05) && Number.isFinite(s.rank_p95) ? (
+            <RankWhisker
+              p05={s.rank_p05 ?? rankValue(c)}
+              p50={s.rank_p50 ?? rankValue(c)}
+              p95={s.rank_p95 ?? rankValue(c)}
+              min={1}
+              max={maxRank}
+              label={`${c.name} rank range`}
+            />
+          ) : (
+            <span className="text-tertiary">—</span>
+          );
+        },
+      },
+      ...SUBSCORE_ORDER.map((ss) => ({
+        id: ss,
+        header: SUBSCORE_LABEL[ss],
+        width: 108,
+        align: "right" as const,
+        sortValue: (c: CountyRow) => c.scores[lens].subscores?.[ss] ?? -1,
+        cell: (c: CountyRow) => <span className="num text-secondary">{score(c.scores[lens].subscores?.[ss])}</span>,
+      })),
+      {
+        id: "confidence",
+        header: "Confidence",
+        width: 104,
+        sortValue: (c) => {
+          const s = c.scores[lens];
+          return (s.p95 ?? 0) - (s.p05 ?? 0);
+        },
+        cell: (c) => <span className="text-caption text-secondary">{confidence(c)}</span>,
+      },
+      {
+        id: "pop60",
+        header: "60+ pop",
+        width: 92,
+        align: "right",
+        sortValue: (c) => c.pop60,
+        cell: (c) => <span className="num text-secondary">{popCompact(c.pop60)}</span>,
+      },
+      {
+        id: "growth",
+        header: "60+ growth",
+        width: 100,
+        align: "right",
+        sortValue: (c) => {
+          const v = c.metrics?.growth_60plus;
+          return typeof v === "number" ? v : -Infinity;
+        },
+        cell: (c) => {
+          const v = c.metrics?.growth_60plus;
+          return <span className="num text-secondary">{pct(typeof v === "number" ? v : null, { signed: true })}</span>;
+        },
+      },
+    ];
+  }, [lens, counties]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -79,51 +184,30 @@ export default function Rankings() {
         </KpiStrip>
 
         {view === "table" ? (
-          <div className="mt-4 overflow-hidden rounded-card border border-subtle bg-surface1">
-            <div className="grid grid-cols-[56px_minmax(180px,1fr)_110px_100px_130px_90px] items-center gap-3 border-b border-subtle bg-surface2 px-3 py-2 text-micro uppercase text-tertiary">
-              <span>Rank</span><span>Area</span><span className="text-right">Score</span><span className="text-right">60+ pop</span><span>Rank range</span><span className="text-right">Compare</span>
-            </div>
-            <VirtualList
-              items={list}
-              itemHeight={56}
-              height={520}
-              aria-label="County rankings"
-              renderItem={(c) => {
-                const s = c.scores[lens];
-                const active = selectedFips === c.fips;
-                const picked = compare.includes(c.fips);
-                return (
-                  <div
-                    key={c.fips}
-                    role="row"
-                    tabIndex={0}
-                    onClick={() => select(c.fips)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(c.fips); } }}
-                    className={`grid h-14 cursor-pointer grid-cols-[56px_minmax(180px,1fr)_110px_100px_130px_90px] items-center gap-3 border-b border-subtle px-3 text-body-sm transition-colors ${active ? "bg-surface2" : "hover:bg-surface2"}`}
-                  >
-                    <span><RankBadge rank={s.rank} /></span>
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Monogram abbr={stateAbbr(c.state)} size={24} color={LENS_COLOR[lens]} />
-                      <span className="min-w-0">
-                        <span className="block truncate text-primary">{c.name}</span>
-                        <span className="block truncate text-caption text-tertiary">{c.state}</span>
-                      </span>
-                    </span>
-                    <span className="justify-self-end"><ScoreChip value={s.total} /></span>
-                    <span className="num justify-self-end text-secondary">{popCompact(c.pop60)}</span>
-                    <span className="num text-caption text-tertiary">{scoreRange(s.p05, s.p95)}</span>
-                    <span className="justify-self-end">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleCompare(c.fips); }}
-                        className={`rounded-chip border px-2 py-1 text-caption transition-colors ${picked ? "border-accentborder bg-accentsubtle text-accenttext" : "border-subtle text-secondary hover:text-primary"}`}
-                      >
-                        {picked ? "Added" : "Add"}
-                      </button>
-                    </span>
-                  </div>
-                );
+          <div className="mt-4">
+            <DataTable
+              rows={list}
+              columns={columns}
+              getRowId={(c) => c.fips}
+              caption="County rankings"
+              height={560}
+              initialSort={{ id: "score", desc: true }}
+              selectedIds={selectedRows}
+              onSelectedChange={setSelectedRows}
+              compareIds={compare}
+              onToggleCompare={toggleCompare}
+              onActivate={(c) => select(c.fips)}
+              onBulkCompare={() => {
+                for (const fips of selectedRows) {
+                  if (!compare.includes(fips)) toggleCompare(fips);
+                }
               }}
+              onBulkExport={() => {
+                const chosen = list.filter((c) => selectedRows.has(c.fips));
+                downloadCsv(`insurvas-selection-${lens}.csv`, rankingsToCsv(chosen, catalog, lens));
+              }}
+              onExport={() => downloadCsv(`insurvas-rankings-${lens}.csv`, rankingsToCsv(list, catalog, lens))}
+              isDisabled={(c) => !c.scores[lens].eligible}
             />
           </div>
         ) : (

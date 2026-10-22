@@ -4,7 +4,10 @@ import { Button } from "../design-system/primitives/Button";
 import { ScoreChip, RankBadge, ConfidenceBadge, RobustPickBadge } from "../design-system/primitives/badges";
 import { Chip } from "../design-system/primitives/Chip";
 import { Input } from "../design-system/primitives/inputs";
+import { DataTable, type DataTableColumn } from "../design-system/patterns/DataTable";
 import { LENS_LABEL, LENS_ORDER, SUBSCORE_COLOR, SUBSCORE_LABEL, SUBSCORE_ORDER } from "../state/lensMeta";
+import { popCompact } from "../state/format";
+import { useState } from "react";
 import {
   BumpChart,
   ChartFrame,
@@ -65,7 +68,31 @@ const PCT = AXES.map((a, i) => ({
 }));
 const TREND = [12, 13, 12.5, 14, 15.2, 15];
 
+interface DemoRow {
+  id: string;
+  name: string;
+  state: string;
+  score: number;
+  pop: number;
+  disabled?: boolean;
+}
+
+const TABLE_ROWS: DemoRow[] = [
+  { id: "1", name: "Los Angeles", state: "CA", score: 87, pop: 1_240_000 },
+  { id: "2", name: "Cook", state: "IL", score: 84, pop: 980_000 },
+  { id: "3", name: "Harris", state: "TX", score: 81, pop: 760_000 },
+  { id: "4", name: "Maricopa", state: "AZ", score: 78, pop: 720_000 },
+  { id: "5", name: "Miami-Dade", state: "FL", score: 74, pop: 690_000 },
+  { id: "6", name: "Tiny county", state: "VT", score: 0, pop: 900, disabled: true },
+];
+const TABLE_COLUMNS: DataTableColumn<DemoRow>[] = [
+  { id: "name", header: "Area", width: 220, sticky: true, sortValue: (r) => r.name, cell: (r) => <span className="text-primary">{r.name}, {r.state}</span> },
+  { id: "score", header: "Score", width: 90, align: "right", sortValue: (r) => r.score, cell: (r) => <span className="num text-secondary">{r.score}</span> },
+  { id: "pop", header: "60+ pop", width: 100, align: "right", sortValue: (r) => r.pop, cell: (r) => <span className="num text-secondary">{popCompact(r.pop)}</span> },
+];
+
 export default function DesignGallery() {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   return (
     <div className="flex h-full flex-col">
       <PageHeader title="Design Gallery" description="Primitives, patterns, and tokens for verification." />
@@ -167,6 +194,25 @@ export default function DesignGallery() {
             </div>
           </ChartFrame>
         </div>
+
+        <Card title="Data table">
+          <DataTable
+            rows={TABLE_ROWS}
+            columns={TABLE_COLUMNS}
+            getRowId={(r) => r.id}
+            caption="Sample county table"
+            height={280}
+            initialSort={{ id: "score", desc: true }}
+            selectedIds={selected}
+            onSelectedChange={setSelected}
+            onActivate={() => {}}
+            onBulkCompare={() => {}}
+            onBulkExport={() => {}}
+            onToggleCompare={() => {}}
+            onExport={() => {}}
+            isDisabled={(r) => Boolean(r.disabled)}
+          />
+        </Card>
 
         <Card title="Inline marks">
           <div className="flex flex-wrap items-center gap-6">

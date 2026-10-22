@@ -27,6 +27,7 @@ export {
   Filter,
   Gauge,
   Grid2x2,
+  GripVertical,
   HelpCircle,
   Info,
   Layers,

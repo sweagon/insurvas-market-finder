@@ -8,6 +8,7 @@ import { RankBadge, ScoreChip, ConfidenceBadge, RobustPickBadge } from "../desig
 import { popCompact, scoreRange, rankRange, topHalf, score, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL } from "../state/lensMeta";
 import { MetricLabel } from "../design-system/patterns/MetricLabel";
+import { Breadcrumb } from "../design-system/patterns/Breadcrumb";
 import { ChartFrame, RadarChart, SubScoreBars, SubScoreTable, type RadarSeries } from "../design-system/charts";
 import { Button } from "../design-system/primitives/Button";
 
@@ -60,6 +61,11 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className="flex h-full flex-col">
+      {!embedded && (
+        <div className="border-b border-subtle bg-surface1 px-4 pt-3 md:px-6">
+          <Breadcrumb items={[{ label: "Map", to: "/" }, { label: "Rankings", to: "/rankings" }, { label: `${c.name}, ${c.state}` }]} />
+        </div>
+      )}
       {!embedded && (
         <PageHeader
           title={`${c.name}, ${c.state}`}
