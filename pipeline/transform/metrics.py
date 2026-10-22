@@ -226,6 +226,8 @@ def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
         .then(pl.col("dir_total") / pl.col("total_pop"))
         .otherwise(None),
     )
+    # The scored metric is the same per-capita series under its catalogue id.
+    df = df.with_columns(non_earned_income_per_capita=pl.col("bea_dir_per_capita"))
 
     # ---- IRS CT reconciliation -------------------------------------------
     df = impute_ct_state_mean(
@@ -283,9 +285,12 @@ def build_metric_matrix(manifest: Manifest, cfg=None) -> pl.DataFrame:
     df = df.with_columns(
         coverage_gap_households_60=total_65_hh * (1 - pl.col("expected_ownership_65")),
         # Context only: self-reported poor physical or mental health, 18+.
+        # PLACES publishes prevalence in percent; the metric is stored as a
+        # fraction like every other share in the catalogue.
         area_health_context=pl.mean_horizontal(
             [pl.col("mhlth"), pl.col("phlth")], ignore_nulls=False
-        ),
+        )
+        / 100.0,
     )
 
     return df

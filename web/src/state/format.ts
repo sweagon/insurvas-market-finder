@@ -107,6 +107,7 @@ const UNIT_FORMATTERS: Record<string, (n: number | null | undefined) => string> 
   usd: usd,
   share: pct,
   percent: pct,
+  growth_rate: (n) => pct(n, { signed: true }),
   density: (n) => (n == null ? MISSING : `${NUM1.format(n)}/sq mi`),
   rate: (n) => (n == null ? MISSING : NUM1.format(n)),
   index: (n) => (n == null ? MISSING : NUM1.format(n)),

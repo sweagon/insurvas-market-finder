@@ -78,6 +78,10 @@ class Metric(BaseModel):
     modeled: bool = False
     lens_weights: MetricLensWeights = Field(default_factory=MetricLensWeights)
     caveats: str = ""
+    # Per-metric override of the global coverage floor. Set this when a source
+    # has a known, documented gap (e.g. a release that does not cover two
+    # states) so the QA report can demand what is actually achievable.
+    min_coverage: float | None = None
 
 
 class Params(BaseModel):
@@ -89,6 +93,9 @@ class Params(BaseModel):
     monte_carlo_draws: int = 500
     monte_carlo_moe_confidence: float = 0.90
     shrinkage: str = "empirical_bayes"
+    min_metric_coverage: float = 0.90
+    expected_counties: int = 3144
+    county_count_tolerance: float = 0.01
 
 
 class SubScore(BaseModel):
@@ -160,6 +167,16 @@ class MetricsConfig(_Raw):
 
     def sub_score_ids(self) -> list[str]:
         return ["size", "affordability", "need", "reachability", "whitespace", "insurability"]
+
+    def coverage_floor(self, metric: Metric) -> float:
+        """The share of counties a metric must be present for.
+
+        A per-metric override wins over the global floor; the override exists
+        for sources with a known, documented gap.
+        """
+        if metric.min_coverage is not None:
+            return float(metric.min_coverage)
+        return float(self.params.min_metric_coverage)
 
     def lens_weights_fraction(self, lens_id: str) -> dict[str, float]:
         """Sub-score weights for a lens as fractions in [0, 1] summing to 1.0."""

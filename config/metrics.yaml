@@ -31,6 +31,13 @@ params:
   monte_carlo_draws: 500
   monte_carlo_moe_confidence: 0.90   # ACS MOEs are 90% CI
   shrinkage: empirical_bayes
+  # Quality floors enforced by the QA report, which fails the build when they
+  # are breached. A metric must be present for at least this share of counties.
+  min_metric_coverage: 0.90
+  # The county universe is fixed by config; a different count means a join
+  # dropped rows. The check allows a 1% slack for vintage-driven differences.
+  expected_counties: 3144
+  county_count_tolerance: 0.01
 
 vintages:
   acs: "2020-2024"            # ACS 5-year, latest county-complete (released 2026-01-29)
@@ -223,7 +230,7 @@ metrics:
     source: popest
     table_field: "cc-est2025-syasex: (pop60+_2025 / pop60+_2020) - 1"
     vintage: "2020-2025"
-    unit: percent
+    unit: growth_rate
     direction: higher_is_better
     transform: none
     moe: none
@@ -243,7 +250,7 @@ metrics:
     transform: log
     moe: acs_api
     scored: true
-    lens_weights: {volume: 0.30, balanced: 0.30, final_expense: 0.25, legacy_wealth: 0.35, spouse_protection: 0.25}
+    lens_weights: {volume: 0.26, balanced: 0.25, final_expense: 0.22, legacy_wealth: 0.28, spouse_protection: 0.22}
     caveats: "5-year pooled estimate; household income, not personal."
 
   - id: share_65_hh_75k
@@ -257,7 +264,7 @@ metrics:
     transform: none
     moe: derived_prop
     scored: true
-    lens_weights: {volume: 0.25, balanced: 0.25, final_expense: 0.30, legacy_wealth: 0.35, spouse_protection: 0.25}
+    lens_weights: {volume: 0.22, balanced: 0.2, final_expense: 0.28, legacy_wealth: 0.28, spouse_protection: 0.23}
     caveats: "Income is for the whole household; a 65+ householder may live with working-age adults."
 
   - id: irs_investment_income_per_return
@@ -271,8 +278,22 @@ metrics:
     transform: log
     moe: none
     scored: true
-    lens_weights: {volume: 0.25, balanced: 0.20, final_expense: 0.15, legacy_wealth: 0.20, spouse_protection: 0.20}
+    lens_weights: {volume: 0.22, balanced: 0.18, final_expense: 0.14, legacy_wealth: 0.16, spouse_protection: 0.18}
     caveats: "ZIP-based county assignment; suppressed below 20 returns; not age-restricted."
+
+  - id: non_earned_income_per_capita
+    label: Dividends, interest and rent per resident
+    subscore: affordability
+    source: bea
+    table_field: "CAINC4 line 46 (dividends, interest, and rent) / total population"
+    vintage: "2024"
+    unit: usd
+    direction: higher_is_better
+    transform: log
+    moe: none
+    scored: true
+    lens_weights: {volume: 0.15, balanced: 0.15, final_expense: 0.10, legacy_wealth: 0.20, spouse_protection: 0.10}
+    caveats: "Per resident, not per 65+ resident, and it includes rent. It is a wealth-composition signal, not a measure of spending power."
 
   - id: home_equity_65
     label: Housing equity proxy for 65+ owners (mortgage-free value)
@@ -285,7 +306,7 @@ metrics:
     transform: log
     moe: derived_ratio
     scored: true
-    lens_weights: {volume: 0.20, balanced: 0.25, final_expense: 0.30, legacy_wealth: 0.10, spouse_protection: 0.30}
+    lens_weights: {volume: 0.15, balanced: 0.22, final_expense: 0.26, legacy_wealth: 0.08, spouse_protection: 0.27}
     caveats: "Ecological proxy: median value times a county share; not a household-level estimate."
 
   # ---------------- NEED ----------------
@@ -373,7 +394,11 @@ metrics:
     transform: none
     moe: none
     scored: true
-    lens_weights: {volume: 1.0, balanced: 1.0, final_expense: 1.0, legacy_wealth: 1.0, spouse_protection: 1.0}
+    lens_weights: {volume: 0.5, balanced: 0.5, final_expense: 0.5, legacy_wealth: 0.5, spouse_protection: 0.5}
+    # The 2025 PLACES release does not publish the 2023-vintage measures for
+    # Kentucky or Pennsylvania, so 187 counties have no PLACES value at all.
+    # 0.93 is the floor that this documented gap implies.
+    min_coverage: 0.93
     caveats: "Area health context for adults 18+, not seniors and not individuals. A standardised index, so the level is not a prevalence. Never use for individual eligibility."
 
   - id: risk_behaviour_composite
@@ -387,7 +412,9 @@ metrics:
     transform: none
     moe: none
     scored: true
-    lens_weights: {volume: 1.0, balanced: 1.0, final_expense: 1.0, legacy_wealth: 1.0, spouse_protection: 1.0}
+    lens_weights: {volume: 0.5, balanced: 0.5, final_expense: 0.5, legacy_wealth: 0.5, spouse_protection: 0.5}
+    # Same documented PLACES gap as chronic_burden_composite (KY and PA).
+    min_coverage: 0.93
     caveats: "Modifiable area-level behaviours; correlated with income, which is already scored. A standardised index, so the level is not a prevalence."
 
   # ------- CONTEXT / MODELED PRIORS (not scored) -------
@@ -425,7 +452,7 @@ metrics:
     label: "Area health context: poor physical or mental health (adults 18+)"
     subscore: insurability
     source: places
-    table_field: "PLACES MHLTH (poor mental health) + PHLTH (poor physical health) crude prevalence, mean"
+    table_field: "PLACES MHLTH (poor mental health) + PHLTH (poor physical health) crude prevalence, mean, as a fraction"
     vintage: "2025"
     unit: share
     direction: lower_is_better
@@ -433,7 +460,8 @@ metrics:
     moe: none
     scored: false
     lens_weights: {}
-    caveats: "Shown for context only; never used in scoring or filtering."
+    caveats: "Shown for context only; never used in scoring or filtering. The 2025 PLACES release does not publish the 2023-vintage measures for Kentucky or Pennsylvania, so 187 counties have no value."
+    min_coverage: 0.93
 
 rule_R7: >
   This tool NEVER uses race, ethnicity, national origin, religion or disability
