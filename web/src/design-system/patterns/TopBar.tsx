@@ -34,17 +34,17 @@ export function TopBar({
   const { theme } = usePreferences();
 
   return (
-    <header className="sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-3 overflow-hidden border-b border-subtle bg-surface1/90 px-3 backdrop-blur md:px-5">
+    <header className="sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-2 border-b border-subtle bg-surface1/95 px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] backdrop-blur md:gap-3 md:px-5">
       <button
         type="button"
         onClick={onOpenMobileNav}
         aria-label="Open navigation"
-        className="flex h-9 w-9 items-center justify-center rounded-control text-secondary hover:bg-surface2 lg:hidden"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-secondary hover:bg-surface2 md:hidden"
       >
         <Menu size={20} aria-hidden />
       </button>
 
-      <span className="lg:hidden">
+      <span className="md:hidden">
         <Brand tone={theme} variant="mark" className="h-7 w-7" alt="Insurvas Market Finder" />
       </span>
 
@@ -56,16 +56,16 @@ export function TopBar({
         <span className="text-primary capitalize">{view}</span>
       </nav>
 
-      <div className="ml-auto flex items-center gap-2">
-        <div className="hidden xl:block">
+      <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
+        <div className="hidden 2xl:block">
           <LensSwitcher />
         </div>
-        <label className="xl:hidden">
+        <label className="2xl:hidden">
           <span className="sr-only">Strategy lens</span>
           <select
             value={lens}
             onChange={(e) => setLens(e.target.value as typeof lens)}
-            className="h-control max-w-32 rounded-control border border-default bg-surface2 px-2 text-body-sm text-primary"
+            className="h-10 max-w-28 rounded-control border border-default bg-surface2 px-2 text-body-sm text-primary sm:max-w-40"
           >
             {LENS_ORDER.map((l) => (
               <option key={l} value={l}>{catalog?.lenses?.[l]?.label ?? l}</option>
@@ -103,8 +103,10 @@ export function TopBar({
           </Button>
         </div>
 
-        <ThemeToggle />
-        <Button variant="ghost" size="icon" onClick={onOpenSettings} aria-label="Settings">
+        <span className="hidden md:inline-flex">
+          <ThemeToggle />
+        </span>
+        <Button variant="ghost" size="icon" onClick={onOpenSettings} aria-label="Settings" className="hidden md:inline-flex">
           <Settings size={18} aria-hidden />
         </Button>
       </div>

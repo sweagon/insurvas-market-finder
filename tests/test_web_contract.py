@@ -22,6 +22,7 @@ WEB = paths.WEB
 CATALOG = WEB / "src" / "data" / "catalog.generated.json"
 META = paths.WEB_PUBLIC_DATA / "meta.json"
 COUNTIES = paths.WEB_PUBLIC_DATA / "counties.json"
+MAP_DIR = paths.WEB_PUBLIC_DATA / "map"
 
 
 @pytest.fixture(scope="module")
@@ -102,6 +103,21 @@ def test_every_metric_and_flag_is_served(cfg, catalog, counties) -> None:
     missing_flags = set(catalog["flags"]) - columns
     assert not missing_flags, f"flags missing from counties.json: {sorted(missing_flags)}"
     assert counties["length"] == len(counties["columns"]["fips"])
+
+
+def test_every_lens_has_a_map_matrix(cfg, counties) -> None:
+    """Explore downloads one compact map matrix per lens, aligned by FIPS."""
+    fips = counties["columns"]["fips"]
+    for lens in cfg.lens_ids():
+        path = MAP_DIR / f"{lens}.json"
+        assert path.exists(), f"missing map matrix for {lens}: run `make build`"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        columns = payload["columns"]
+        assert payload["lens"] == lens
+        assert payload["length"] == len(fips)
+        assert columns["fips"] == fips
+        for key in ("name", "state", "pop60", "total", "eligible", "sub_size"):
+            assert len(columns[key]) == len(fips), f"{lens}.{key} is misaligned"
 
 
 def test_every_declared_unit_has_a_contract(cfg, catalog) -> None:

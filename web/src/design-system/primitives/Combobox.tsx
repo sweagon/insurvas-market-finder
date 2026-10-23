@@ -50,7 +50,7 @@ export function Combobox({
   const selected = options.find((o) => o.value === value);
   const shouldVirtualize = virtual ?? filtered.length > 60;
   const height = 280;
-  const itemHeight = 36;
+  const itemHeight = 42;
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -72,7 +72,7 @@ export function Combobox({
         <PopoverPrimitive.Content
           sideOffset={6}
           align="start"
-          className="z-popover w-[var(--radix-popover-trigger-width)] min-w-64 rounded-panel border border-default bg-surface1 shadow-l3"
+          className="z-popover max-h-[min(70dvh,420px)] w-[min(var(--radix-popover-trigger-width),calc(100vw-1.5rem))] min-w-[min(16rem,calc(100vw-1.5rem))] overflow-hidden rounded-panel border border-default bg-surface1 shadow-l3"
         >
           <div className="flex items-center gap-2 border-b border-subtle px-3 py-2">
             <Search size={14} className="text-tertiary" aria-hidden />
@@ -149,7 +149,7 @@ function ComboRow({
       onClick={onSelect}
       style={height ? { height } : undefined}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-control px-2 text-left text-body",
+        "flex w-full items-center justify-between gap-2 rounded-control px-3 text-left text-body",
         "hover:bg-surface2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focusring",
         selected && "text-primary",
       )}

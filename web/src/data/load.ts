@@ -37,6 +37,12 @@ export interface CountyColumnar {
   columns: Record<string, Array<string | number | boolean | null>>;
 }
 
+export interface MapLensPayload {
+  lens: LensId;
+  length: number;
+  columns: Record<string, Array<string | number | boolean | null>>;
+}
+
 const SNAPSHOT_URL = "/data/rankings.json";
 
 /** How long to wait for the live API before falling back to the snapshot. */
@@ -109,38 +115,124 @@ function toLensScore(s: ApiLensScore | undefined): LensScore {
   };
 }
 
-export async function loadAll(): Promise<{
-  source: Source;
-  catalog: MetaCatalog | null;
+export interface CorePayload {
+  catalog: MetaCatalog;
   counties: CountyRow[];
   states: StateRow[];
-}> {
-  const [catalog, countyData, stateData, ranking] = await Promise.all([
+}
+
+export async function loadCore(): Promise<CorePayload> {
+  const [catalog, countyData, stateData] = await Promise.all([
     fetchJson<MetaCatalog>("/data/meta.json"),
     fetchJson<CountyColumnar>("/data/counties.json"),
     fetchJson<{ states: StateRow[] }>("/data/states.json"),
-    loadRankings(),
   ]);
-
   const rows = columnsToRows(countyData);
-  const byFips = new Map<string, CountyRanking>(
-    ranking.payload.counties.map((c) => [c.fips, c]),
-  );
-
   const lensIds = Object.keys(catalog.lenses ?? {}) as LensId[];
-  const counties = rows.map((row): CountyRow => {
-    const ranked = byFips.get(row.fips);
-    const scores = Object.fromEntries(
-      lensIds.map((lid) => [lid, toLensScore(ranked?.scores?.[lid])]),
-    ) as Record<LensId, LensScore>;
-    return { ...row, scores };
-  });
+  const counties = rows.map((row): CountyRow => ({
+    ...row,
+    scores: Object.fromEntries(
+      lensIds.map((lid) => [lid, emptyLensScore()]),
+    ) as Record<LensId, LensScore>,
+  }));
+  return { catalog, counties, states: stateData.states ?? [] };
+}
 
+function emptyLensScore(): LensScore {
+  return {
+    total: null,
+    p05: null,
+    p95: null,
+    rank: null,
+    eligible: false,
+    subscores: Object.fromEntries(SUB_SCORE_IDS.map((id) => [id, null])) as Record<SubScoreId, number | null>,
+    rank_p05: null,
+    rank_p50: null,
+    rank_p95: null,
+    p_top50: null,
+    partial: false,
+    coverage: null,
+  };
+}
+
+/** Compact per-lens map matrix for Explore. */
+export async function loadMapLens(lens: LensId): Promise<Map<string, LensScore>> {
+  const data = await fetchJson<MapLensPayload>(`/data/map/${encodeURIComponent(lens)}.json`);
+  const c = data.columns;
+  const get = (key: string, i: number) => {
+    const col = c[key];
+    return col ? col[i] : null;
+  };
+  const out = new Map<string, LensScore>();
+  for (let i = 0; i < data.length; i += 1) {
+    const fips = String(get("fips", i) ?? "");
+    if (!fips) continue;
+    const sub = Object.fromEntries(
+      SUB_SCORE_IDS.map((id) => {
+        const value = get(`sub_${id}`, i);
+        return [id, typeof value === "number" ? value : null];
+      }),
+    ) as Record<string, number | null>;
+    out.set(
+      fips,
+      toLensScore({
+        total: numberOrNull(get("total", i)),
+        p05: numberOrNull(get("p05", i)),
+        p95: numberOrNull(get("p95", i)),
+        rank: numberOrNull(get("rank", i)),
+        eligible: get("eligible", i) === true,
+        coverage: numberOrNull(get("coverage", i)),
+        partial: get("partial", i) === true,
+        rank_p05: numberOrNull(get("rank_p05", i)),
+        rank_p50: numberOrNull(get("rank_p50", i)),
+        rank_p95: numberOrNull(get("rank_p95", i)),
+        p_top50: numberOrNull(get("p_top50", i)),
+        sub,
+      }),
+    );
+  }
+  return out;
+}
+
+function numberOrNull(value: string | number | boolean | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Full multi-lens scores, used by the analyst screens. */
+export function scoresFromRankings(
+  payload: RankingsPayload,
+  lensIds: LensId[],
+): Map<string, Record<LensId, LensScore>> {
+  const byFips = new Map<string, CountyRanking>(
+    payload.counties.map((c) => [c.fips, c]),
+  );
+  return new Map(
+    payload.counties.map((c) => [
+      c.fips,
+      Object.fromEntries(
+        lensIds.map((lid) => [lid, toLensScore(byFips.get(c.fips)?.scores?.[lid])]),
+      ) as Record<LensId, LensScore>,
+    ]),
+  );
+}
+
+export async function loadAll(): Promise<{
+  source: Source;
+  catalog: MetaCatalog;
+  counties: CountyRow[];
+  states: StateRow[];
+}> {
+  const [core, ranking] = await Promise.all([loadCore(), loadRankings()]);
+  const lensIds = Object.keys(core.catalog.lenses ?? {}) as LensId[];
+  const scores = scoresFromRankings(ranking.payload, lensIds);
   return {
     source: ranking.source,
-    catalog,
-    counties,
-    states: stateData.states ?? [],
+    catalog: core.catalog,
+    counties: core.counties.map((row) => ({
+      ...row,
+      scores: scores.get(row.fips) ?? row.scores,
+    })),
+    states: core.states,
   };
 }
 

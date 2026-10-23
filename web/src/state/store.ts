@@ -4,6 +4,7 @@ import {
   DEFAULT_LENS,
   type CountyRow,
   type LensId,
+  type LensScore,
   type MetaCatalog,
   type StateRow,
   type SubScoreId,
@@ -38,13 +39,23 @@ interface State {
   chart: ChartMode;
   loaded: boolean;
   loadError: string | null;
+  loadedLenses: LensId[];
+  rankingsLoaded: boolean;
 
   setData: (data: {
     source: Source;
     catalog: MetaCatalog | null;
     counties: CountyRow[];
     states: StateRow[];
+    loadedLenses?: LensId[];
+    rankingsLoaded?: boolean;
   }) => void;
+  mergeLensScores: (lens: LensId, scores: Map<string, LensScore>, source?: Source) => void;
+  mergeAllScores: (
+    scores: Map<string, Record<LensId, LensScore>>,
+    lensIds: LensId[],
+    source?: Source,
+  ) => void;
   setLoadError: (msg: string | null) => void;
   setLens: (l: LensId) => void;
   setWeights: (w: SubScoreWeights) => void;
@@ -87,7 +98,9 @@ export const useStore = create<State>((set, get) => ({
   chart: { profile: "radar", data: "chart" },
   loaded: false,
   loadError: null,
-  setData: ({ source, catalog, counties, states }) => {
+  loadedLenses: [],
+  rankingsLoaded: false,
+  setData: ({ source, catalog, counties, states, loadedLenses = [], rankingsLoaded = false }) => {
     const lens = get().lens;
     set({
       source,
@@ -96,9 +109,31 @@ export const useStore = create<State>((set, get) => ({
       states,
       loaded: true,
       loadError: null,
+      loadedLenses,
+      rankingsLoaded,
       weights: weightsFor(lens),
     });
   },
+  mergeLensScores: (lens, scores, source) =>
+    set((s) => ({
+      counties: s.counties.map((county) =>
+        scores.has(county.fips)
+          ? { ...county, scores: { ...county.scores, [lens]: scores.get(county.fips)! } }
+          : county,
+      ),
+      loadedLenses: s.loadedLenses.includes(lens) ? s.loadedLenses : [...s.loadedLenses, lens],
+      ...(source ? { source } : {}),
+    })),
+  mergeAllScores: (scores, lensIds, source) =>
+    set((s) => ({
+      counties: s.counties.map((county) => {
+        const next = scores.get(county.fips);
+        return next ? { ...county, scores: next } : county;
+      }),
+      loadedLenses: Array.from(new Set([...s.loadedLenses, ...lensIds])),
+      rankingsLoaded: true,
+      ...(source ? { source } : {}),
+    })),
   setLoadError: (loadError) => set({ loadError }),
   setLens: (lens) =>
     set({ lens, weights: weightsFor(lens) }),

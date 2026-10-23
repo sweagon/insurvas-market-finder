@@ -50,6 +50,9 @@ export function SettingsPanel() {
       <Row label="Reduce motion">
         <Switch checked={p.reduceMotion} onCheckedChange={p.setReduceMotion} aria-label="Reduce motion" />
       </Row>
+      <Row label="Reduce transparency">
+        <Switch checked={p.reduceTransparency} onCheckedChange={p.setReduceTransparency} aria-label="Reduce transparency" />
+      </Row>
     </div>
   );
 }

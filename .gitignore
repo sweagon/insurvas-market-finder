@@ -33,3 +33,7 @@ web/public/data/*.tmp
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Playwright
+web/test-results/
+web/playwright-report/

@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "./state/store";
 import { useView } from "./state/navigation";
-import { loadAll } from "./data/load";
+import { loadCore, loadMapLens, loadRankings, scoresFromRankings } from "./data/load";
 import { useUrlSync } from "./state/url";
 import { Sidebar } from "./design-system/patterns/Sidebar";
 import { TopBar } from "./design-system/patterns/TopBar";
@@ -14,6 +14,7 @@ import { EmptyState } from "./design-system/patterns/states";
 import { Monogram, RankBadge, ScoreChip } from "./design-system/primitives/badges";
 import { stateAbbr, popCompact } from "./state/format";
 import { LENS_COLOR } from "./state/lensMeta";
+import type { LensId } from "./data/types";
 
 const Explore = lazy(() => import("./views/Explore"));
 const Rankings = lazy(() => import("./views/Rankings"));
@@ -86,7 +87,23 @@ function NotFound({ title = "Page not found", reason = "This route does not exis
 }
 
 function Shell() {
-  const { setData, setLoadError, loaded, loadError, selectedFips, select, counties, lens, compare, toggleCompare } = useStore();
+  const {
+    setData,
+    setLoadError,
+    mergeLensScores,
+    mergeAllScores,
+    loaded,
+    loadError,
+    loadedLenses,
+    rankingsLoaded,
+    catalog,
+    selectedFips,
+    select,
+    counties,
+    lens,
+    compare,
+    toggleCompare,
+  } = useStore();
   const { view, setView } = useView();
   const selected = counties.find((c) => c.fips === selectedFips);
   const selectedScore = selected?.scores?.[lens];
@@ -111,10 +128,10 @@ function Shell() {
 
   useEffect(() => {
     let cancelled = false;
-    loadAll()
-      .then((res) => {
+    loadCore()
+      .then((core) => {
         if (cancelled) return;
-        setData(res);
+        setData({ ...core, source: "snapshot" });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -123,18 +140,67 @@ function Shell() {
     return () => { cancelled = true; };
   }, [setData, setLoadError]);
 
+  useEffect(() => {
+    if (!loaded || !catalog) return;
+    let cancelled = false;
+
+    if (view === "explore") {
+      if (rankingsLoaded || loadedLenses.includes(lens)) return;
+      loadMapLens(lens)
+        .then((scores) => {
+          if (!cancelled) mergeLensScores(lens, scores, "snapshot");
+        })
+        .catch((error: unknown) => {
+          if (!cancelled) {
+            setLoadError(error instanceof Error ? error.message : "Failed to load map data");
+          }
+        });
+      return () => { cancelled = true; };
+    }
+
+    if (rankingsLoaded) return;
+    loadRankings()
+      .then(({ payload, source }) => {
+        if (cancelled) return;
+        const lensIds = Object.keys(catalog.lenses ?? {}) as LensId[];
+        mergeAllScores(scoresFromRankings(payload, lensIds), lensIds, source);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "Failed to load rankings");
+        }
+      });
+    return () => { cancelled = true; };
+  }, [
+    catalog,
+    lens,
+    loaded,
+    loadedLenses,
+    mergeAllScores,
+    mergeLensScores,
+    rankingsLoaded,
+    setLoadError,
+    view,
+  ]);
+
   if (loadError) {
     return (
-      <div className="flex h-screen items-center justify-center p-6">
+      <div className="flex h-[100dvh] items-center justify-center p-6">
         <EmptyState title="Failed to load data" reason={loadError} />
       </div>
     );
   }
 
-  if (!loaded) {
+  const waitingForScores =
+    view === "explore" ? !rankingsLoaded && loadedLenses.length === 0 : !rankingsLoaded;
+
+  if (!loaded || waitingForScores) {
     return (
-      <div className="flex h-screen items-center justify-center p-6">
-        <EmptyState title="Loading market data" reason="Fetching counties, states, and rankings." />
+      <div className="flex h-[100dvh] items-center justify-center p-6">
+        <EmptyState
+          title="Loading market data"
+          reason={view === "explore" ? "Fetching the map for this lens." : "Fetching county scores and rankings."}
+        />
       </div>
     );
   }
@@ -152,8 +218,8 @@ function Shell() {
   }
 
   return (
-    <div className="grid h-screen grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr]">
-      <aside className="col-start-1 row-span-2 hidden lg:block">
+    <div className="grid h-[100dvh] min-h-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
+      <aside className="col-start-1 row-span-2 hidden min-h-0 md:block">
         <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
       </aside>
       <header className="col-start-2 row-start-1 min-w-0">
@@ -166,22 +232,24 @@ function Shell() {
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
       </header>
-      <main className="relative col-start-2 row-start-2 min-w-0 overflow-auto pb-14 lg:pb-0">
+      <main className="relative col-start-2 row-start-2 flex min-h-0 min-w-0 flex-col overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
         <StaleDataBanner />
-        <Suspense fallback={<EmptyState title="Loading view" reason="Preparing module" />}>
-          <Routes>
-            <Route path="/" element={<Explore />} />
-            <Route path="/rankings" element={<Rankings />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/scatter" element={<Scatter />} />
-            <Route path="/sensitivity" element={<Sensitivity />} />
-            <Route path="/methodology" element={<Methodology />} />
-            <Route path="/area/:fips" element={<AreaRoute />} />
-            <Route path="/print/:fips" element={<PrintBrief />} />
-            <Route path="/design" element={<DesignGallery />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <Suspense fallback={<EmptyState title="Loading view" reason="Preparing module" />}>
+            <Routes>
+              <Route path="/" element={<Explore />} />
+              <Route path="/rankings" element={<Rankings />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/scatter" element={<Scatter />} />
+              <Route path="/sensitivity" element={<Sensitivity />} />
+              <Route path="/methodology" element={<Methodology />} />
+              <Route path="/area/:fips" element={<AreaRoute />} />
+              <Route path="/print/:fips" element={<PrintBrief />} />
+              <Route path="/design" element={<DesignGallery />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </div>
         <FooterBar />
         <CompareTray />
       </main>
@@ -196,9 +264,14 @@ function Shell() {
       <Modal open={mobileNavOpen} onOpenChange={setMobileNavOpen} title="Menu" side="left">
         <nav className="space-y-1">
           {(["explore", "rankings", "compare", "scatter", "sensitivity", "methodology"] as const).map((v) => (
-            <button key={v} type="button" onClick={() => { setView(v); setMobileNavOpen(false); }} className="block w-full rounded-control px-3 py-2 text-left text-body capitalize text-secondary hover:bg-surface2 hover:text-primary">{v}</button>
+            <button key={v} type="button" onClick={() => { setView(v); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body capitalize text-secondary hover:bg-surface2 hover:text-primary">{v}</button>
           ))}
         </nav>
+        <div className="mt-4 space-y-1 border-t border-subtle pt-3">
+          <button type="button" onClick={() => { setShareOpen(true); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Share this view</button>
+          <button type="button" onClick={() => { setExportOpen(true); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Export data</button>
+          <button type="button" onClick={() => { setSettingsOpen(true); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Settings and theme</button>
+        </div>
       </Modal>
       {selected && selectedScore && view !== "area" && (
         <Drawer
@@ -206,29 +279,29 @@ function Shell() {
           onOpenChange={(o) => { if (!o) select(null); }}
           title={`${selected.name}, ${selected.state}`}
           header={
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <Monogram abbr={stateAbbr(selected.state)} size={40} color={LENS_COLOR[lens]} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="truncate text-h2 text-primary">{selected.name}</div>
-                <div className="text-caption text-secondary">{selected.state} • {popCompact(selected.pop60)} aged 60+</div>
+                <div className="truncate text-caption text-secondary">{selected.state} • {popCompact(selected.pop60)} aged 60+</div>
               </div>
-              <div className="ml-2 flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <RankBadge rank={selectedScore.rank} />
                 <ScoreChip value={selectedScore.total} />
               </div>
             </div>
           }
           footer={
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-caption text-tertiary">ACS 2020–2024 · {compare.length} selected</span>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setBriefOpen(true)} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => setBriefOpen(true)} className="min-h-9 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
                   Brief
                 </button>
-                <Link to={`/area/${selected.fips}`} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                <Link to={`/area/${selected.fips}`} className="min-h-9 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
                   Full page
                 </Link>
-                <button type="button" onClick={() => toggleCompare(selected.fips)} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                <button type="button" onClick={() => toggleCompare(selected.fips)} className="min-h-9 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
                   {compare.includes(selected.fips) ? "Remove from compare" : "Add to compare"}
                 </button>
               </div>

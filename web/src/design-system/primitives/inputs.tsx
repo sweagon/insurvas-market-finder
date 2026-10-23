@@ -103,7 +103,7 @@ export function Switch({
       id={id}
       aria-label={ariaLabel}
       className={cn(
-        "relative h-5 w-9 shrink-0 rounded-pill border border-default bg-surface3 transition-colors duration-fast",
+        "relative h-5 w-9 shrink-0 rounded-pill border border-default bg-surface3 transition-colors duration-fast after:absolute after:-inset-2.5 after:content-['']",
         "data-[state=checked]:border-transparent data-[state=checked]:bg-accent",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
       )}
@@ -132,7 +132,7 @@ export function Checkbox({
       onCheckedChange={(v) => onCheckedChange(v === true)}
       aria-label={ariaLabel}
       className={cn(
-        "flex h-5 w-5 items-center justify-center rounded-[5px] border border-strong bg-surface1",
+        "relative flex h-5 w-5 items-center justify-center rounded-[5px] border border-strong bg-surface1",
         "data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=checked]:text-onaccent",
         "data-[state=indeterminate]:border-accent data-[state=indeterminate]:bg-accent data-[state=indeterminate]:text-onaccent",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",

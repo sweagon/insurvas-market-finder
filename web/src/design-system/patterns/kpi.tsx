@@ -92,7 +92,7 @@ export function KpiCard({ label, value, info, delta, sparkline, link, className 
 /** KPI strip (R3): 4 cells with hairline dividers; wraps 4/2/1 by container. */
 export function KpiStrip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 divide-x divide-y divide-subtle overflow-hidden rounded-card border border-subtle bg-surface1 sm:divide-y-0 lg:grid-cols-4">
+    <div className="grid grid-cols-2 divide-x divide-y divide-subtle overflow-hidden rounded-card border border-subtle bg-surface1 [&>*:last-child]:col-span-2 sm:grid-cols-3 sm:divide-y-0 sm:[&>*:last-child]:col-span-1 lg:grid-cols-5">
       {children}
     </div>
   );

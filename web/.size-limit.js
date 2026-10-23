@@ -60,6 +60,12 @@ export default [
     gzip: true,
   },
   {
+    name: "map lens payload (gzip)",
+    path: "public/data/map/volume.json",
+    limit: "140 kB",
+    gzip: true,
+  },
+  {
     name: "map topology (gzip)",
     path: "public/data/topo.json",
     limit: "500 kB",

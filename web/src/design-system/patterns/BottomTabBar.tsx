@@ -18,7 +18,7 @@ export function BottomTabBar({ onMore }: { onMore: () => void }) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-sticky flex h-14 items-stretch border-t border-subtle bg-surface1/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-sticky flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-stretch border-t border-subtle bg-surface1/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       {ITEMS.map((item) => {
         const active = view === item.id;
@@ -29,7 +29,7 @@ export function BottomTabBar({ onMore }: { onMore: () => void }) {
             onClick={() => setView(item.id)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px]",
+              "relative flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 text-[10px]",
               active ? "text-accenttext" : "text-tertiary",
             )}
           >
@@ -48,7 +48,7 @@ export function BottomTabBar({ onMore }: { onMore: () => void }) {
       <button
         type="button"
         onClick={onMore}
-        className="flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-tertiary"
+        className="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-tertiary"
       >
         <Menu size={20} aria-hidden />
         More

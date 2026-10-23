@@ -42,6 +42,14 @@ brand: ## Re-derive logo, favicon and social assets from the source wordmark
 web: ## Build the production SPA bundle
 	cd web && npm run build
 
+.PHONY: docker
+docker: ## Build the single-container production image
+	docker build -t insurvas-market-finder:local .
+
+.PHONY: docker-run
+docker-run: ## Run the production image on http://localhost:$(PORT)
+	docker run --rm -p $(PORT):8000 --name insurvas-market-finder insurvas-market-finder:local
+
 .PHONY: demo
 demo: build web ## Build everything and serve the app on http://localhost:$(PORT)
 	@echo "Serving on http://localhost:$(PORT)"
@@ -63,6 +71,14 @@ test-py: ## Run Python tests
 .PHONY: test-web
 test-web: ## Run web unit + parity tests
 	cd web && npm run test
+
+.PHONY: e2e
+e2e: web ## Build the SPA and run the browser end-to-end checks
+	cd web && npx playwright test
+
+.PHONY: size
+size: web ## Enforce the bundle and payload budgets
+	cd web && npm run size
 
 .PHONY: parity
 parity: ## Regenerate parity goldens and run the TS parity test

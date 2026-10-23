@@ -30,6 +30,9 @@ React SPA, and serves both from a single FastAPI process.
 | `make test` | Python + web tests |
 | `make lint` | ruff + mypy + eslint + tsc |
 | `make parity` | Regenerate Python<->TS goldens and run the parity test |
+| `make e2e` | Build the SPA and run the Playwright desktop/mobile checks |
+| `make size` | Enforce the initial-JS, map-payload and topology budgets |
+| `make docker` | Build the single-container production image |
 | `make refresh` | Rebuild the dataset in place (same as the admin endpoint) |
 
 ## What it answers
@@ -82,6 +85,21 @@ web/                      React + TypeScript + Tailwind SPA
 docs/                     ADRs, methodology, one-pager, demo script, playbook
 tests/                    Python tests + parity goldens
 ```
+
+## Serving and deployment
+
+`make demo` runs FastAPI on :8000, serving the API and the built SPA from one
+process. The same image is produced by `make docker` / `make docker-run`: a
+non-root Python 3.12 container with a `/api/health` healthcheck and no CORS.
+
+The SPA loads its data by route: the shell pulls `meta.json` + `counties.json`,
+Explore loads one compact `meta.json`-matched `data/map/<lens>.json` matrix, and
+the analyst screens fetch `rankings.json` on demand. Responses carry a strict
+CSP, `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy`, plus
+immutable caching for hashed assets, short-lived caching for data and
+`no-cache` for the shell. CI (`.github/workflows/ci.yml`) runs the Python
+contract tests, the web unit/parity tests, the size budgets and the Playwright
+end-to-end checks.
 
 ## Data sources
 

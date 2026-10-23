@@ -1,7 +1,7 @@
 import { CATALOG_CONFIG_HASH, type BuildMeta } from "../data/types";
 
-/** How long a build may serve before the UI warns that vintages have aged. */
-export const STALE_AFTER_DAYS = 45;
+/** How long a build may serve before the UI warns that vintages have aged. Mirrors `api/main.py`. */
+export const STALE_AFTER_DAYS = 32;
 
 export interface Freshness {
   stale: boolean;

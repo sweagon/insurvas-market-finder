@@ -53,12 +53,12 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     <nav
       aria-label="Primary"
       className={cn(
-        "hidden lg:flex w-[var(--shell-rail)] xl:w-[var(--shell-sidebar)] shrink-0 flex-col border-r",
+        "hidden md:flex w-[var(--shell-rail)] xl:w-[var(--shell-sidebar)] shrink-0 flex-col border-r",
         "bg-[var(--sidebar-bg)] text-[var(--sidebar-text)]",
       )}
       style={{ borderColor: "var(--sidebar-border)" }}
     >
-      <div className="flex items-center gap-2 px-4 py-4">
+      <div className="flex items-center gap-2 px-3 py-4 xl:px-4">
         <span className="xl:hidden">
           <Brand tone={dark ? "dark" : "light"} variant="mark" className="h-8 w-8" />
         </span>

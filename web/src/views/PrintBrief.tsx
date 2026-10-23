@@ -142,7 +142,8 @@ export default function PrintBrief() {
 
         <section>
           <h2 className="border-b border-default pb-1 text-h3 text-primary">Lookalike counties</h2>
-          <table className="mt-2 w-full text-body-sm">
+          <div className="overflow-x-auto">
+          <table className="mt-2 w-full min-w-[420px] text-body-sm">
             <thead>
               <tr className="border-b border-subtle text-micro uppercase text-tertiary">
                 <th className="py-1 text-left font-medium">Area</th>
@@ -160,11 +161,13 @@ export default function PrintBrief() {
               ))}
             </tbody>
           </table>
+          </div>
         </section>
 
         <section>
           <h2 className="border-b border-default pb-1 text-h3 text-primary">Metrics and sources</h2>
-          <table className="mt-2 w-full text-body-sm">
+          <div className="overflow-x-auto">
+          <table className="mt-2 w-full min-w-[560px] text-body-sm">
             <thead>
               <tr className="border-b border-subtle text-micro uppercase text-tertiary">
                 <th className="py-1 text-left font-medium">Metric</th>
@@ -192,6 +195,7 @@ export default function PrintBrief() {
               })}
             </tbody>
           </table>
+          </div>
         </section>
 
         <footer className="border-t border-default pt-3 text-caption text-tertiary">
@@ -208,15 +212,15 @@ export default function PrintBrief() {
         </footer>
       </div>
 
-      <div className="no-print mx-auto mt-6 flex max-w-[820px] gap-3">
+      <div className="no-print mx-auto mt-6 flex max-w-[820px] flex-wrap gap-3">
         <button
           type="button"
           onClick={() => window.print()}
-          className="rounded-control bg-accent px-3 py-1.5 text-body-sm text-onaccent"
+          className="min-h-10 rounded-control bg-accent px-4 py-1.5 text-body-sm text-onaccent"
         >
           Print
         </button>
-        <Link to={`/area/${c.fips}`} className="rounded-control border border-default px-3 py-1.5 text-body-sm text-secondary">
+        <Link to={`/area/${c.fips}`} className="min-h-10 rounded-control border border-default px-4 py-1.5 text-body-sm text-secondary">
           Back to area
         </Link>
       </div>

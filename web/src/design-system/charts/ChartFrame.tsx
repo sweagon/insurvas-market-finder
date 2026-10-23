@@ -47,15 +47,15 @@ export function ChartFrame({
 
   return (
     <figure
-      className={cn("rounded-card border border-subtle bg-surface1", className)}
+      className={cn("cq rounded-card border border-subtle bg-surface1", className)}
       aria-labelledby={summaryId}
     >
-      <header className="flex flex-wrap items-start gap-2 border-b border-subtle px-[var(--card-pad)] py-3">
+      <header className="chart-head flex flex-wrap items-start gap-2 border-b border-subtle px-[var(--card-pad)] py-3">
         <div className="min-w-0">
           <h3 className="text-h3 text-primary">{title}</h3>
           {subtitle && <p className="mt-0.5 text-caption text-tertiary">{subtitle}</p>}
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="chart-actions ml-auto flex flex-wrap items-center gap-2">
           {vintage && <Chip tone="neutral">{vintage}</Chip>}
           {actions}
           {table && state === "ready" && (

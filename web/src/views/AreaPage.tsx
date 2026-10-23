@@ -27,7 +27,9 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
   const { counties, lens, selectedFips, catalog, select, toggleCompare, compare } = useStore();
   const navigate = useNavigate();
   const openArea = (fips: string) => (embedded ? select(fips) : navigate(`/area/${fips}`));
-  const [profile, setProfile] = useState<"radar" | "bars">("radar");
+  const [profile, setProfile] = useState<"radar" | "bars">(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches ? "bars" : "radar",
+  );
   const c = useMemo(() => counties.find((x) => x.fips === selectedFips), [counties, selectedFips]);
   if (!c) return <div className="p-6 text-secondary">Select a county from the map or rankings to view details.</div>;
   const s = c.scores[lens];

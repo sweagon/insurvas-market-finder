@@ -357,6 +357,7 @@ def build(*, mc_draws: int | None = None) -> dict:
 
     _write_duckdb(identity, scores_df, contrib_df, meta, metrics_df=_metrics_frame(cfg, df))
     _write_rankings_json(cfg, identity, lens_scores, meta)
+    _write_map_json(cfg, identity, lens_scores)
     _write_columnar_json(cfg, df, identity, lens_scores, meta)
     _write_manifest(manifest, cfg, meta)
     paths.BUILD_META.write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -462,6 +463,46 @@ def _write_rankings_json(
     (paths.WEB_PUBLIC_DATA / "rankings.json").write_text(
         json.dumps(payload, separators=(",", ":")), encoding="utf-8"
     )
+
+
+def _write_map_json(
+    cfg, identity: pl.DataFrame, lens_scores: dict[str, pl.DataFrame]
+) -> None:
+    """Emit one small map matrix per lens.
+
+    Explore needs identity, population and the current lens's score matrix -
+    not the full multi-lens rankings payload. Keeping one file per lens lets a
+    lens switch download only what it draws.
+    """
+    out = paths.WEB_PUBLIC_DATA / "map"
+    out.mkdir(parents=True, exist_ok=True)
+    base = {
+        "fips": identity["fips"].to_list(),
+        "name": identity["ctyname"].to_list(),
+        "state": identity["stusps"].to_list(),
+        "pop60": [int(v) for v in identity["pop_60plus"].to_list()],
+    }
+    for lid, frame in lens_scores.items():
+        columns = dict(base)
+        for key in ("total", "p05", "p50", "p95", "coverage"):
+            columns[key] = [_num(frame[key][i], 4) for i in range(frame.height)]
+        for key in ("rank_p05", "rank_p50", "rank_p95"):
+            columns[key] = [_num(frame[key][i], 1) for i in range(frame.height)]
+        columns["p_top50"] = [_num(frame["p_top50"][i], 4) for i in range(frame.height)]
+        columns["rank"] = [
+            int(frame["rank"][i]) if frame["rank"][i] is not None else None
+            for i in range(frame.height)
+        ]
+        columns["eligible"] = [bool(v) for v in frame["eligible"].to_list()]
+        columns["partial"] = [bool(v) for v in frame["partial"].to_list()]
+        for sid in cfg.sub_score_ids():
+            columns[f"sub_{sid}"] = [
+                _num(frame[f"sub_{sid}"][i], 3) for i in range(frame.height)
+            ]
+        payload = {"lens": lid, "length": frame.height, "columns": columns}
+        (out / f"{lid}.json").write_text(
+            json.dumps(payload, separators=(",", ":")), encoding="utf-8"
+        )
 
 
 def _write_columnar_json(

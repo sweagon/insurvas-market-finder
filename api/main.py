@@ -23,7 +23,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -40,6 +41,63 @@ app = FastAPI(
 )
 
 _build_lock = threading.Lock()
+
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "worker-src 'self' blob:; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'; "
+    "manifest-src 'self'"
+)
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+
+@app.middleware("http")
+async def security_and_cache_headers(request: Request, call_next):
+    """One place for the production browser contract.
+
+    Hashed build assets are immutable; data is short-lived and revalidated;
+    the SPA shell is never cached so a deploy can roll forward immediately.
+    The CSP is skipped only for the API's developer docs, which load Swagger
+    from a CDN.
+    """
+    response = await call_next(request)
+    path = request.url.path
+
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()"
+    )
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    if not path.startswith("/api/docs"):
+        response.headers.setdefault("Content-Security-Policy", _CSP)
+    if request.url.scheme == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+
+    if path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.startswith("/fonts/"):
+        response.headers["Cache-Control"] = "public, max-age=2592000"
+    elif path.startswith("/data/"):
+        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=86400"
+    elif path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    elif "." not in path.rsplit("/", 1)[-1]:
+        response.headers["Cache-Control"] = "no-cache"
+    else:
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def _connect() -> duckdb.DuckDBPyConnection:

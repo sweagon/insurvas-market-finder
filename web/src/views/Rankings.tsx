@@ -17,7 +17,10 @@ import { useMemo as useColumns, useState } from "react";
 
 export default function Rankings() {
   const { counties, lens, catalog, select, toggleCompare, compare, filters, setFilter, clearFilters } = useStore();
-  const [view, setView] = useState<"table" | "cards">("table");
+  const [view, setView] = useState<"table" | "cards">(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "cards" : "table",
+  );
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   const list = useMemo(() => {
@@ -37,7 +40,12 @@ export default function Rankings() {
     return Array.from(set).sort().map((s) => ({ value: s, label: s }));
   }, [counties]);
 
-  const dirty = filters.states.length > 0 || filters.minPop60 > 2000 || filters.minScore > 0 || filters.query.length > 0;
+  const activeFilterCount =
+    (filters.states.length > 0 ? 1 : 0) +
+    (filters.minPop60 > 2000 ? 1 : 0) +
+    (filters.minScore > 0 ? 1 : 0) +
+    (filters.query.length > 0 ? 1 : 0);
+  const dirty = activeFilterCount > 0;
 
   const columns = useColumns<DataTableColumn<CountyRow>[]>(() => {
     const maxRank = Math.max(1, counties.filter((c) => c.scores[lens].eligible).length);
@@ -182,7 +190,20 @@ export default function Rankings() {
         }
       />
 
-      <div className="flex flex-wrap items-end gap-3 border-b border-subtle bg-surface1 px-4 py-3 md:px-6">
+      <div className="flex items-center gap-2 border-b border-subtle bg-surface1 px-4 py-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          className="min-h-10 rounded-control border border-default px-3 text-body-sm text-secondary"
+        >
+          Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}
+        </button>
+        <span className="ml-auto text-caption text-tertiary">{list.length.toLocaleString()} areas</span>
+        {dirty && <button type="button" onClick={clearFilters} className="min-h-10 px-2 text-caption text-accenttext">Clear</button>}
+      </div>
+
+      <div className={filtersOpen ? "flex flex-wrap items-end gap-3 border-b border-subtle bg-surface1 px-4 py-3 md:px-6" : "hidden flex-wrap items-end gap-3 border-b border-subtle bg-surface1 px-4 py-3 md:flex md:px-6"}>
         <div className="w-full sm:w-64">
           <label className="mb-1 block text-micro uppercase text-tertiary" htmlFor="rank-search">Search</label>
           <Input id="rank-search" placeholder="County, state or FIPS" value={filters.query} onChange={(e) => setFilter("query", e.target.value)} />
@@ -205,9 +226,9 @@ export default function Rankings() {
           </div>
           <Slider value={[filters.minScore]} min={0} max={100} step={1} onValueChange={(v) => setFilter("minScore", v[0])} aria-label="Minimum opportunity score" />
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="hidden items-center gap-2 md:flex md:ml-auto">
           <span className="text-caption text-tertiary">{list.length.toLocaleString()} of {counties.length.toLocaleString()}</span>
-          {dirty && <button type="button" onClick={clearFilters} className="text-caption text-accenttext">Clear</button>}
+          {dirty && <button type="button" onClick={clearFilters} className="min-h-9 px-1 text-caption text-accenttext">Clear</button>}
         </div>
       </div>
 

@@ -35,7 +35,16 @@
   html,
   body,
   #root {
+    min-height: 100%;
+  }
+
+  html {
     height: 100%;
+  }
+
+  body,
+  #root {
+    min-height: 100dvh;
   }
 
   body {
@@ -89,6 +98,34 @@
     -webkit-backdrop-filter: blur(16px) saturate(1.2);
   }
 
+  .cq {
+    container-type: inline-size;
+  }
+
+  .cq-chart {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 460px) {
+    .chart-head {
+      align-items: stretch;
+    }
+    .chart-actions {
+      margin-left: 0;
+      width: 100%;
+    }
+    .chart-actions > * {
+      flex: 1 1 auto;
+    }
+  }
+
+  [data-reduced-transparency="1"] .glass,
+  [data-reduced-transparency="1"] [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--bg-surface-1);
+  }
+
   .hatch {
     background-image: repeating-linear-gradient(
       -45deg,
@@ -97,6 +134,14 @@
       var(--border-strong) 3px,
       var(--border-strong) 4px
     );
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border-subtle: rgba(255, 244, 230, 0.22);
+    --border-default: rgba(255, 244, 230, 0.4);
+    --border-strong: rgba(255, 244, 230, 0.65);
   }
 }
 
@@ -111,13 +156,46 @@
   }
 }
 
+@page {
+  size: auto;
+  margin: 14mm;
+}
+
 @media print {
   .no-print {
     display: none !important;
   }
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
   body {
-    background: #fff;
-    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-sheet {
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+  .print-sheet section,
+  .print-sheet table,
+  .print-sheet figure,
+  .print-sheet header,
+  .print-sheet footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-sheet h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .print-sheet a[href]::after {
+    content: "";
   }
 }
 

@@ -19,6 +19,7 @@ interface PreferencesValue {
   palette: Palette;
   sidebarTone: SidebarTone;
   reduceMotion: boolean;
+  reduceTransparency: boolean;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
   setDensity: (d: Density) => void;
@@ -26,6 +27,7 @@ interface PreferencesValue {
   setPalette: (p: Palette) => void;
   setSidebarTone: (s: SidebarTone) => void;
   setReduceMotion: (v: boolean) => void;
+  setReduceTransparency: (v: boolean) => void;
 }
 
 const PreferencesContext = createContext<PreferencesValue | null>(null);
@@ -47,11 +49,18 @@ function write(key: string, value: string): void {
   }
 }
 
+function systemTheme(): Theme {
+  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches) {
+    return "light";
+  }
+  return "dark";
+}
+
 function initialTheme(): Theme {
   if (typeof document !== "undefined" && document.documentElement.dataset.theme) {
     return document.documentElement.dataset.theme as Theme;
   }
-  return read<Theme>("insurvas.theme", "dark");
+  return read<Theme>("insurvas.theme", systemTheme());
 }
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
@@ -68,6 +77,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [reduceMotion, setReduceMotionState] = useState<boolean>(() => {
     try {
       return localStorage.getItem("insurvas.reduceMotion") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [reduceTransparency, setReduceTransparencyState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("insurvas.reduceTransparency") === "1";
     } catch {
       return false;
     }
@@ -93,6 +109,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.reduceMotion = reduceMotion ? "1" : "0";
     write("insurvas.reduceMotion", reduceMotion ? "1" : "0");
   }, [reduceMotion]);
+  useEffect(() => {
+    document.documentElement.dataset.reducedTransparency = reduceTransparency ? "1" : "0";
+    write("insurvas.reduceTransparency", reduceTransparency ? "1" : "0");
+  }, [reduceTransparency]);
 
   const toggleTheme = useCallback(
     () => setThemeState((t) => (t === "dark" ? "light" : "dark")),
@@ -110,6 +130,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       palette,
       sidebarTone,
       reduceMotion,
+      reduceTransparency,
       setTheme: setThemeState,
       toggleTheme,
       setDensity: setDensityState,
@@ -117,8 +138,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setPalette: setPaletteState,
       setSidebarTone: setSidebarToneState,
       setReduceMotion: setReduceMotionState,
+      setReduceTransparency: setReduceTransparencyState,
     }),
-    [theme, density, palette, sidebarTone, reduceMotion, toggleTheme, toggleDensity],
+    [theme, density, palette, sidebarTone, reduceMotion, reduceTransparency, toggleTheme, toggleDensity],
   );
 
   return (

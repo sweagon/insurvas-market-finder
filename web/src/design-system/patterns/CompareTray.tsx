@@ -15,12 +15,12 @@ export function CompareTray() {
     .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
   return (
-    <div className="pointer-events-none sticky bottom-0 z-panel flex justify-center px-3 pb-3 lg:pb-4">
-      <div className="glass l3 pointer-events-auto flex max-w-full items-center gap-3 rounded-pill border px-3 py-2">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-panel flex justify-center px-2 md:static md:bottom-auto md:px-3 md:pb-3 lg:pb-4">
+      <div className="glass l3 pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-2 rounded-panel border px-3 py-2 md:flex-nowrap md:rounded-pill">
         <span className="text-caption text-secondary">
           {items.length} selected
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto">
           {items.map((c) => (
             <span key={c.fips} className="inline-flex items-center gap-1.5 rounded-pill bg-surface2 pl-0.5 pr-1.5 py-0.5">
               <Monogram abbr={stateAbbr(c.state)} size={22} />
@@ -36,12 +36,14 @@ export function CompareTray() {
             </span>
           ))}
         </div>
-        <Button variant="primary" size="sm" onClick={() => setView("compare")}>
-          Compare
-        </Button>
-        <Button variant="ghost" size="sm" onClick={clearCompare}>
-          Clear
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="primary" size="sm" onClick={() => setView("compare")}>
+            Compare
+          </Button>
+          <Button variant="ghost" size="sm" onClick={clearCompare}>
+            Clear
+          </Button>
+        </div>
       </div>
     </div>
   );

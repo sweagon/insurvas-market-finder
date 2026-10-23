@@ -25,7 +25,7 @@ export function Slider({
   ...rest
 }: SliderProps) {
   return (
-    <div className={cn("relative flex h-6 items-center", className)}>
+    <div className={cn("relative flex h-10 items-center", className)}>
       {histogram && histogram.length > 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-6 items-end gap-px px-2.5" aria-hidden>
           {histogram.map((h, i) => (
@@ -53,7 +53,7 @@ export function Slider({
           <SliderPrimitive.Thumb
             key={i}
             className={cn(
-              "block h-4 w-4 rounded-pill bg-surface1 shadow-l2",
+              "relative block h-5 w-5 rounded-pill bg-surface1 shadow-l2 after:absolute after:-inset-2 after:content-['']",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
             )}
             style={{ border: "2px solid var(--accent)" }}

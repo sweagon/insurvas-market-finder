@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { cn } from "../cn";
 import { X } from "../icons";
 
-const SNAPS = ["96px", "50dvh", "92dvh"] as const;
+const SNAPS = ["112px", "50dvh", "92dvh"] as const;
 
 export interface BottomSheetProps {
   open: boolean;
@@ -38,7 +38,9 @@ export function BottomSheet({
   const content = useRef<HTMLDivElement>(null);
 
   const heightPx = (index: 0 | 1 | 2) =>
-    index === 0 ? 96 : window.innerHeight * (index === 1 ? 0.5 : 0.92);
+    index === 0
+      ? 112
+      : (window.visualViewport?.height ?? window.innerHeight) * (index === 1 ? 0.5 : 0.92);
 
   const finish = () => {
     if (!dragging || !content.current) return;
@@ -87,7 +89,8 @@ export function BottomSheet({
             }}
             onPointerMove={(e) => {
               if (!dragging) return;
-              setDrag(Math.max(-window.innerHeight * 0.9, Math.min(window.innerHeight * 0.8, e.clientY - start.current)));
+              const height = window.visualViewport?.height ?? window.innerHeight;
+              setDrag(Math.max(-height * 0.9, Math.min(height * 0.8, e.clientY - start.current)));
             }}
             onPointerUp={finish}
             onPointerCancel={finish}
@@ -110,15 +113,15 @@ export function BottomSheet({
             <span className="h-1 w-10 rounded-pill bg-strong" aria-hidden />
           </div>
 
-          <header className="flex shrink-0 items-center justify-between gap-3 px-5 pb-2">
+          <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 md:px-5">
             <DialogPrimitive.Title className="text-h3 text-primary">{title}</DialogPrimitive.Title>
             <DialogPrimitive.Close aria-label="Close sheet" className="rounded-control p-1.5 text-tertiary hover:bg-surface2 hover:text-primary">
               <X size={18} aria-hidden />
             </DialogPrimitive.Close>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">{children}</div>
-          {footer && <footer className="shrink-0 border-t border-subtle px-5 py-3">{footer}</footer>}
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 md:px-5">{children}</div>
+          {footer && <footer className="shrink-0 border-t border-subtle px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-5">{footer}</footer>}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

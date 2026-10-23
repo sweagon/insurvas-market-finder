@@ -6,7 +6,7 @@ the user-visible impact and how it is contained. Revisit these when the
 referenced constraint changes; do not silently "fix" one without updating this
 file.
 
-Last reviewed: 2026-10-22.
+Last reviewed: 2026-10-23.
 
 ---
 
@@ -60,9 +60,13 @@ honest uncertainty to fit a stale number. Initial JS is budgeted at 120 kB
 (measured ~100 kB) to leave room for routing and charts; the brief's hard cap is
 250 kB.
 
-**Open:** precompression and route-level splitting are handled in the
-performance pass; re-measure and lower both budgets if the compressed payload
-can meet a tighter bound without dropping `p05/p95` or `p_top50`.
+**Shipped:** the data is now split by route. The shell loads
+`meta.json` + `counties.json`; Explore downloads one compact
+`data/map/<lens>.json` (~124 kB gzip) and opens the map without the full
+multi-lens matrix. `rankings.json` is fetched only on `/rankings`, `/compare`,
+`/scatter` and `/sensitivity`, and map topology is served in two LODs (a fast
+mesh plus a detail mesh fetched while idle). Compressed assets are pregenerated
+and served with `Cache-Control`/ETag rules by the FastAPI container.
 
 ---
 
@@ -173,3 +177,7 @@ These were real gaps, now fixed; kept here so the history is auditable.
 | No staleness signal | `config_hash` in catalogue + data, red/amber banner |
 | Old playbook pointed at deleted components | Paths corrected; this playbook added |
 | Duplicate `--lens-volume`/`--lens-balanced` colour | Volume moved to `#0072B2`; distinct-colour test |
+| Map painted nothing on a narrow first frame | Draw falls back to the measured element box and re-requests the frame instead of skipping |
+| Mobile shell ignored safe areas, `dvh` and the rubric breakpoints | `100dvh` shell, safe-area insets, 72 px rail from `md`, docked inspector from `2xl`, one-scroll `main` |
+| Shell/tables/charts assumed a mouse | 44 px touch targets, full-height mobile drawers/sheets, pointer-driven scatter tooltips, cards-first rankings on phones |
+| Theme always defaulted to dark | `prefers-color-scheme` when unset; reduced-transparency option; `@page`/break rules for the print brief |

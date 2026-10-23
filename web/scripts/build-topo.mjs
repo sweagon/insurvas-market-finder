@@ -11,7 +11,7 @@
  *   https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_state_5m.zip
  * Downloaded into data/raw/geo/ by the Python geometry fetcher.
  *
- * Output: web/public/data/topo.json  (objects: counties, states)
+ * Output: web/public/data/topo.json (fast LOD) and topo-detail.json (zoom LOD).
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -24,7 +24,9 @@ import { presimplify, simplify } from "topojson-simplify";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..", "..");
 const RAW = resolve(ROOT, "data", "raw", "geo");
-const OUT = resolve(ROOT, "web", "public", "data", "topo.json");
+const OUT_DIR = resolve(ROOT, "web", "public", "data");
+const OUT = resolve(OUT_DIR, "topo.json");
+const DETAIL = resolve(OUT_DIR, "topo-detail.json");
 
 const COUNTY_SHP = resolve(RAW, "cb_2024_us_county_5m", "cb_2024_us_county_5m.shp");
 const STATE_SHP = resolve(RAW, "cb_2024_us_state_5m", "cb_2024_us_state_5m.shp");
@@ -101,17 +103,21 @@ async function main() {
     1e4
   );
 
-  // Preserve the quantisation, then lightly simplify counties for size.
-  const SIMPLIFY = Number(process.env.TOPO_SIMPLIFY ?? 0.35);
-  const simplified = simplify(presimplify(topo), SIMPLIFY);
+  // Two LODs share the same quantised topology. The browser renders the fast
+  // one first, then swaps in the detail mesh while idle for crisp deep zoom.
+  mkdirSync(OUT_DIR, { recursive: true });
+  const base = presimplify(topo);
+  const lowSimplify = Number(process.env.TOPO_SIMPLIFY ?? 0.62);
+  const low = simplify(base, lowSimplify);
+  writeFileSync(OUT, JSON.stringify(low));
+  const high = simplify(presimplify(topo), 0.1);
+  writeFileSync(DETAIL, JSON.stringify(high));
 
-  mkdirSync(dirname(OUT), { recursive: true });
-  writeFileSync(OUT, JSON.stringify(simplified));
-
-  const count = simplified.objects.counties.geometries.length;
-  const ct = simplified.objects.counties.geometries.filter(g => String(g.id).startsWith("09")).length;
-  console.log(`wrote ${OUT}`);
-  console.log(`counties: ${count} (CT regions: ${ct}), states: ${simplified.objects.states.geometries.length}`);
+  const count = low.objects.counties.geometries.length;
+  const ct = low.objects.counties.geometries.filter(g => String(g.id).startsWith("09")).length;
+  console.log(`wrote ${OUT} (${(JSON.stringify(low).length / 1024).toFixed(0)} KB)`);
+  console.log(`wrote ${DETAIL} (${(JSON.stringify(high).length / 1024).toFixed(0)} KB)`);
+  console.log(`counties: ${count} (CT regions: ${ct}), states: ${low.objects.states.geometries.length}`);
 }
 
 main().catch((err) => {

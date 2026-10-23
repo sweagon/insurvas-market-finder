@@ -250,6 +250,7 @@ export function DataTable<T>({
               <Checkbox
                 checked={allSelected}
                 indeterminate={!allSelected && someSelected}
+                className="relative after:absolute after:-inset-2.5 after:content-['']"
                 aria-label="Select all visible rows"
                 onCheckedChange={(v) => {
                   if (!onSelectedChange) return;
@@ -273,7 +274,7 @@ export function DataTable<T>({
                   role="columnheader"
                   aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
                   className={cn(
-                    "sticky top-0 z-20 flex h-9 items-center gap-1 bg-surface2 px-2",
+                    "group/header sticky top-0 z-20 flex h-10 items-center gap-1 bg-surface2 px-2",
                     meta?.align === "right" && "justify-end",
                     i === 0 && "left-[42px] z-30 shadow-[1px_0_0_var(--border-subtle)]",
                   )}
@@ -293,8 +294,8 @@ export function DataTable<T>({
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" aria-label={`Column menu for ${labelText}`} className="ml-auto rounded p-0.5 text-tertiary opacity-0 hover:text-primary focus:opacity-100 group-hover/header:opacity-100 [div:hover>&]:opacity-100">
-                        <ChevronDown size={11} aria-hidden />
+                      <button type="button" aria-label={`Column menu for ${labelText}`} className="ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-tertiary hover:text-primary focus:opacity-100 md:opacity-0 md:group-hover/header:opacity-100">
+                        <ChevronDown size={13} aria-hidden />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
@@ -314,7 +315,7 @@ export function DataTable<T>({
                     aria-orientation="vertical"
                     aria-label={`Resize ${labelText}`}
                     onPointerDown={(e) => startResize(col.id, e)}
-                    className="absolute right-0 top-1/2 h-4 w-2 -translate-y-1/2 cursor-col-resize rounded hover:bg-accent/40"
+                    className="absolute -right-2 top-1/2 h-9 w-4 -translate-y-1/2 cursor-col-resize touch-none rounded hover:bg-accent/30"
                   />
                 </div>
               );
@@ -374,6 +375,7 @@ export function DataTable<T>({
                     <div role="gridcell" className="sticky left-0 z-10 flex h-full items-center justify-center bg-inherit" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={isSelected}
+                        className="relative after:absolute after:-inset-2.5 after:content-['']"
                         aria-label={`Select row ${item.index + 1}`}
                         onCheckedChange={() => toggleAt(item.index, false)}
                       />
