@@ -124,6 +124,35 @@ export default function Rankings() {
         cell: (c) => <span className="num text-secondary">{popCompact(c.pop60)}</span>,
       },
       {
+        id: "gap",
+        header: "Gap HH",
+        width: 100,
+        align: "right",
+        sortValue: (c) => {
+          const v = c.metrics?.coverage_gap_households_60;
+          return typeof v === "number" ? v : -Infinity;
+        },
+        cell: (c) => {
+          const v = c.metrics?.coverage_gap_households_60;
+          return <span className="num text-secondary">{typeof v === "number" ? popCompact(v) : "—"}</span>;
+        },
+      },
+      {
+        id: "agencies",
+        header: "Agencies / 1k",
+        width: 112,
+        align: "right",
+        hidden: true,
+        sortValue: (c) => {
+          const v = c.metrics?.agencies_per_1000_60plus;
+          return typeof v === "number" ? v : -Infinity;
+        },
+        cell: (c) => {
+          const v = c.metrics?.agencies_per_1000_60plus;
+          return <span className="num text-secondary">{typeof v === "number" ? v.toFixed(1) : "—"}</span>;
+        },
+      },
+      {
         id: "growth",
         header: "60+ growth",
         width: 100,
@@ -169,6 +198,13 @@ export default function Rankings() {
           </div>
           <Slider value={[filters.minPop60]} min={0} max={500000} step={1000} onValueChange={(v) => setFilter("minPop60", v[0])} aria-label="Minimum 60+ population" />
         </div>
+        <div className="w-full sm:w-48">
+          <div className="mb-1 flex items-center justify-between text-micro uppercase text-tertiary">
+            <span>Minimum score</span>
+            <span className="num">{filters.minScore}</span>
+          </div>
+          <Slider value={[filters.minScore]} min={0} max={100} step={1} onValueChange={(v) => setFilter("minScore", v[0])} aria-label="Minimum opportunity score" />
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <span className="text-caption text-tertiary">{list.length.toLocaleString()} of {counties.length.toLocaleString()}</span>
           {dirty && <button type="button" onClick={clearFilters} className="text-caption text-accenttext">Clear</button>}
@@ -178,6 +214,7 @@ export default function Rankings() {
       <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
         <KpiStrip>
           <KpiCell label="Ranked" value={list.length.toLocaleString()} />
+          <KpiCell label="Gap households" value={popCompact(list.reduce((sum, c) => { const v = c.metrics?.coverage_gap_households_60; return sum + (typeof v === "number" ? v : 0); }, 0))} />
           <KpiCell label="Eligible" value={counties.filter((c) => c.scores[lens].eligible).length.toLocaleString()} />
           <KpiCell label="Selected" value={compare.length.toLocaleString()} />
           <KpiCell label="Median score" value={score(list.reduce((s, c) => s + (c.scores[lens].total ?? 0), 0) / Math.max(1, list.length))} />

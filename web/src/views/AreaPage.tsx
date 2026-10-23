@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { useStore } from "../state/store";
+import { Link, useNavigate } from "react-router-dom";
+import { useStore, weightsFor } from "../state/store";
 import { PageHeader } from "../design-system/patterns/PageHeader";
 import { Card } from "../design-system/primitives/Card";
 import { KpiStrip, KpiCell } from "../design-system/patterns/kpi";
 import { RankBadge, ScoreChip, ConfidenceBadge, RobustPickBadge } from "../design-system/primitives/badges";
 import { popCompact, scoreRange, rankRange, topHalf, score, metricValue } from "../state/format";
-import { SUBSCORE_ORDER, SUBSCORE_LABEL } from "../state/lensMeta";
+import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR } from "../state/lensMeta";
 import { MetricLabel } from "../design-system/patterns/MetricLabel";
 import { Breadcrumb } from "../design-system/patterns/Breadcrumb";
-import { ChartFrame, RadarChart, SubScoreBars, SubScoreTable, type RadarSeries } from "../design-system/charts";
+import { ChartFrame, RadarChart, SubScoreBars, SubScoreTable, Waterfall, type RadarSeries } from "../design-system/charts";
 import { Button } from "../design-system/primitives/Button";
 
 const HIGHLIGHT_METRICS = [
@@ -24,7 +24,9 @@ const HIGHLIGHT_METRICS = [
 ];
 
 export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
-  const { counties, lens, selectedFips, catalog, toggleCompare, compare } = useStore();
+  const { counties, lens, selectedFips, catalog, select, toggleCompare, compare } = useStore();
+  const navigate = useNavigate();
+  const openArea = (fips: string) => (embedded ? select(fips) : navigate(`/area/${fips}`));
   const [profile, setProfile] = useState<"radar" | "bars">("radar");
   const c = useMemo(() => counties.find((x) => x.fips === selectedFips), [counties, selectedFips]);
   if (!c) return <div className="p-6 text-secondary">Select a county from the map or rankings to view details.</div>;
@@ -44,6 +46,42 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
       .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
     return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : NaN;
   });
+  const weights = weightsFor(lens);
+  const availableWeight = SUBSCORE_ORDER.reduce(
+    (sum, ss) => sum + (Number.isFinite(s.subscores?.[ss]) ? weights[ss] : 0),
+    0,
+  );
+  const contributions = SUBSCORE_ORDER.map((ss) => {
+    const value = s.subscores?.[ss];
+    return {
+      id: ss,
+      label: SUBSCORE_LABEL[ss],
+      value: typeof value === "number" && availableWeight > 0 ? (value * weights[ss]) / availableWeight : 0,
+      color: SUBSCORE_COLOR[ss],
+    };
+  }).filter((c) => c.value > 0);
+
+  const lookalikes = (() => {
+    const target = SUBSCORE_ORDER.map((ss) => s.subscores?.[ss] ?? NaN);
+    return counties
+      .filter((x) => x.fips !== c.fips && x.scores[lens].eligible)
+      .map((x) => {
+        let sum = 0;
+        let n = 0;
+        SUBSCORE_ORDER.forEach((ss, i) => {
+          const v = x.scores[lens].subscores?.[ss];
+          if (typeof v === "number" && Number.isFinite(target[i])) {
+            sum += (v - target[i]) ** 2;
+            n += 1;
+          }
+        });
+        const distance = n ? Math.sqrt(sum / n) : Infinity;
+        return { county: x, distance, similarity: Number.isFinite(distance) ? Math.max(0, 100 - distance) : 0 };
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 5);
+  })();
+
   const profileSeries: RadarSeries[] = [
     {
       id: "area",
@@ -90,6 +128,25 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
             valueClassName="text-num-md"
           />
         </KpiStrip>
+
+        <ChartFrame
+          title="Why this score"
+          subtitle="Each bar is a sub-score times its normalised weight"
+          vintage="ACS 2020–2024"
+          summary={`The bars sum to ${score(s.total)}. ${strongest.length ? `${SUBSCORE_LABEL[strongest[0]]} contributes the most.` : "No sub-score is available."}`}
+          table={
+            <table className="w-full text-left text-body-sm">
+              <thead><tr className="border-b border-subtle text-caption text-tertiary"><th className="py-2 pr-3 font-medium">Sub-score</th><th className="py-2 text-right font-medium">Points</th></tr></thead>
+              <tbody>
+                {contributions.map((c) => (
+                  <tr key={c.id} className="border-b border-subtle last:border-0"><th scope="row" className="py-2 pr-3 font-normal text-secondary">{c.label}</th><td className="py-2 text-right font-mono text-mono text-primary">{c.value.toFixed(1)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          }
+        >
+          <Waterfall items={contributions} height={220} ariaLabel={`Contribution waterfall for ${c.name}`} />
+        </ChartFrame>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ChartFrame
@@ -168,6 +225,23 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
               );
             })}
           </div>
+        </Card>
+
+        <Card title="Lookalikes" info="Five eligible counties with the closest sub-score profile. Use these as expansion analogues, not twins.">
+          <ul className="divide-y divide-subtle">
+            {lookalikes.map(({ county, similarity }) => (
+              <li key={county.fips} className="flex items-center gap-3 py-2">
+                <button type="button" onClick={() => openArea(county.fips)} className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-body-sm text-primary">{county.name}, {county.state}</span>
+                  <span className="block text-caption text-tertiary">{similarity.toFixed(0)}% profile similarity</span>
+                </button>
+                <span className="num text-caption text-tertiary">#{county.scores[lens].rank}</span>
+                <button type="button" onClick={() => toggleCompare(county.fips)} className="rounded-control border border-default px-2 py-1 text-caption text-secondary hover:text-primary">
+                  {compare.includes(county.fips) ? "Remove" : "Add"}
+                </button>
+              </li>
+            ))}
+          </ul>
         </Card>
 
         <div className="flex flex-wrap gap-3 text-caption">

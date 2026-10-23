@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "../design-system/patterns/DataT
 import { LENS_LABEL, LENS_ORDER, SUBSCORE_COLOR, SUBSCORE_LABEL, SUBSCORE_ORDER } from "../state/lensMeta";
 import { popCompact } from "../state/format";
 import { useState } from "react";
+import { BottomSheet } from "../design-system/overlays/BottomSheet";
 import {
   BumpChart,
   ChartFrame,
@@ -93,6 +94,7 @@ const TABLE_COLUMNS: DataTableColumn<DemoRow>[] = [
 
 export default function DesignGallery() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sheetOpen, setSheetOpen] = useState(false);
   return (
     <div className="flex h-full flex-col">
       <PageHeader title="Design Gallery" description="Primitives, patterns, and tokens for verification." />
@@ -219,6 +221,15 @@ export default function DesignGallery() {
             <div className="flex items-center gap-2 text-body-sm text-secondary">60+ growth <Sparkline values={TREND} label="60+ growth trend, sample" /></div>
             <div className="flex items-center gap-2 text-body-sm text-secondary">Rank range <RankWhisker p05={6} p50={12} p95={21} label="Sample rank range" showValues /></div>
           </div>
+        </Card>
+
+        <Card title="Overlays">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setSheetOpen(true)}>Open bottom sheet</Button>
+          </div>
+          <BottomSheet open={sheetOpen} onOpenChange={setSheetOpen} title="Area details" description="Bottom sheet with 96px, 50% and 92% snap points." footer={<Button onClick={() => setSheetOpen(false)}>Done</Button>}>
+            <p className="text-body-sm text-secondary">Drag the handle or use the arrow keys to move between snap points. The sheet traps focus and closes with Escape.</p>
+          </BottomSheet>
         </Card>
 
         <Card title="Buttons">

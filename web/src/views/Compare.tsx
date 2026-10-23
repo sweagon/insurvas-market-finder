@@ -6,6 +6,8 @@ import { RankBadge, ScoreChip, Monogram } from "../design-system/primitives/badg
 import { popCompact, scoreRange, score, stateAbbr, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR, LENS_COLOR } from "../state/lensMeta";
 import { MetricLabel } from "../design-system/patterns/MetricLabel";
+import { ChartFrame, RadarChart, SubScoreTable, type RadarSeries } from "../design-system/charts";
+import { Check } from "../design-system/icons";
 import { estimateFlag } from "../state/estimate";
 import { FLAG_DESCRIPTIONS } from "../data/types";
 import type { CountyRow } from "../data/types";
@@ -33,6 +35,13 @@ export default function Compare() {
     [counties, lens],
   );
   const metrics = catalog?.metrics ?? [];
+  const radarSeries: RadarSeries[] = items.slice(0, 3).map((c, i) => ({
+    id: c.fips,
+    label: c.name,
+    color: ["#5D8647", "#0072B2", "#E69F00"][i],
+    values: SUBSCORE_ORDER.map((ss) => c.scores[lens].subscores?.[ss] ?? NaN),
+  }));
+  const radarAxes = SUBSCORE_ORDER.map((ss) => ({ id: ss, label: SUBSCORE_LABEL[ss] }));
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -96,6 +105,16 @@ export default function Compare() {
               })}
             </div>
 
+            <ChartFrame
+              title="Profile overlay"
+              subtitle={items.length > 3 ? `First three of ${items.length} areas` : `${items.length} areas`}
+              vintage="ACS 2020–2024"
+              summary="Overlaid sub-score profiles show which areas lead on size, need, affordability and reach."
+              table={<SubScoreTable axes={radarAxes} series={radarSeries} />}
+            >
+              <RadarChart axes={radarAxes} series={radarSeries} height={320} ariaLabel="Compare sub-score radar" />
+            </ChartFrame>
+
             <Card title="Sub-score breakdown">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-body-sm">
@@ -109,11 +128,18 @@ export default function Compare() {
                     {SUBSCORE_ORDER.map((ss) => {
                       const vals = items.map((c) => c.scores[lens].subscores?.[ss] ?? 0);
                       const best = Math.max(...vals);
+                      const worst = Math.min(...vals);
                       return (
                         <tr key={ss}>
                           <td className="py-2" style={{ color: SUBSCORE_COLOR[ss] }}>{SUBSCORE_LABEL[ss]}</td>
                           {vals.map((v, i) => (
-                            <td key={items[i].fips} className={`num py-2 text-right ${v === best ? "font-semibold text-primary" : "text-secondary"}`}>{score(v)}</td>
+                            <td key={items[i].fips} className={`num py-2 text-right ${v === best ? "font-semibold text-primary" : "text-secondary"}`}>
+                              <span className="inline-flex items-center justify-end gap-1">
+                                {v === best && <Check size={12} className="text-positive" aria-label="Best" />}
+                                {v === worst && vals.length > 1 && best !== worst && <span className="size-1.5 rounded-full bg-warning" aria-label="Worst" />}
+                                {score(v)}
+                              </span>
+                            </td>
                           ))}
                         </tr>
                       );

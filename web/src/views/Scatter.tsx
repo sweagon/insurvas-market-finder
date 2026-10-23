@@ -29,11 +29,12 @@ const H = 520;
 const PAD = { l: 64, r: 24, t: 24, b: 48 };
 
 export default function Scatter() {
-  const { counties, lens, select, selectedFips } = useStore();
+  const { counties, lens, select, selectedFips, compare, toggleCompare } = useStore();
   const { theme, palette } = usePreferences();
   const [xAxis, setXAxis] = useState<AxisId>("pop60");
   const [yAxis, setYAxis] = useState<AxisId>("total");
   const [hover, setHover] = useState<{ fips: string; x: number; y: number } | null>(null);
+  const [mode, setMode] = useState<"chart" | "table">("chart");
 
   // A county is only plottable when both axes have a value; counties with an
   // unavailable sub-score are left out rather than drawn at zero.
@@ -64,6 +65,15 @@ export default function Scatter() {
   const sx = (v: number) => PAD.l + ((xMeta.log ? Math.log10(Math.max(1, v)) : v) - x0) / (x1 - x0 || 1) * (W - PAD.l - PAD.r);
   const sy = (v: number) => H - PAD.b - ((yMeta.log ? Math.log10(Math.max(1, v)) : v) - y0) / (y1 - y0 || 1) * (H - PAD.t - PAD.b);
   const color = (s: number) => opportunityColor(s / 100, { theme, colorblind: palette === "colorblind" });
+  const median = (axis: AxisId) => {
+    const values = list
+      .map((c) => valueOf(c, lens, axis))
+      .filter((v): v is number => v != null && Number.isFinite(v))
+      .sort((a, b) => a - b);
+    return values.length ? values[Math.floor(values.length / 2)] : 0;
+  };
+  const xMid = median(xAxis);
+  const yMid = median(yAxis);
 
   const xTicks = Array.from({ length: 5 }, (_, i) => x0 + (i / 4) * (x1 - x0));
   const yTicks = Array.from({ length: 5 }, (_, i) => y0 + (i / 4) * (y1 - y0));
@@ -77,6 +87,13 @@ export default function Scatter() {
       <PageHeader
         title="Scatter Explorer"
         description="Each dot is an eligible county. Find big pools with weak competition, or high-need areas with low coverage."
+        actions={
+          <SegmentedControl
+            value={mode}
+            onValueChange={(v) => setMode(v as "chart" | "table")}
+            options={[{ value: "chart", label: "Chart" }, { value: "table", label: "Table" }]}
+          />
+        }
       />
       <div className="space-y-4 p-4 md:p-6">
         <div className="flex flex-wrap items-center gap-4">
@@ -98,6 +115,35 @@ export default function Scatter() {
           </div>
         </div>
 
+        {mode === "table" ? (
+          <Card title="Plotted counties">
+            <div className="max-h-[520px] overflow-auto">
+              <table className="w-full text-left text-body-sm">
+                <thead className="sticky top-0 bg-surface1">
+                  <tr className="border-b border-subtle text-micro uppercase text-tertiary">
+                    <th className="py-2 pr-3 font-medium">Area</th>
+                    <th className="py-2 pr-3 text-right font-medium">{xMeta.label}</th>
+                    <th className="py-2 pr-3 text-right font-medium">{yMeta.label}</th>
+                    <th className="py-2 text-right font-medium">Compare</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.slice(0, 250).map((c) => (
+                    <tr key={c.fips} className="border-b border-subtle last:border-0">
+                      <th scope="row" className="py-1.5 pr-3 font-normal text-secondary">
+                        <button type="button" onClick={() => select(c.fips)} className="hover:text-primary">{c.name}, {c.state}</button>
+                      </th>
+                      <td className="num py-1.5 pr-3 text-right text-secondary">{xAxis === "pop60" ? popCompact(valueOf(c, lens, xAxis)) : score(valueOf(c, lens, xAxis))}</td>
+                      <td className="num py-1.5 pr-3 text-right text-secondary">{yAxis === "pop60" ? popCompact(valueOf(c, lens, yAxis)) : score(valueOf(c, lens, yAxis))}</td>
+                      <td className="py-1.5 text-right"><button type="button" onClick={() => toggleCompare(c.fips)} className="text-caption text-accenttext">{compare.includes(c.fips) ? "Remove" : "Add"}</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-caption text-tertiary">Showing the first 250 of {list.length.toLocaleString()} counties. Narrow the axes to focus the set.</p>
+          </Card>
+        ) : (
         <Card bodyClassName="p-2">
           <div className="relative">
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${yMeta.label} against ${xMeta.label} for eligible counties`}>
@@ -117,6 +163,17 @@ export default function Scatter() {
               <line x1={PAD.l} x2={PAD.l} y1={PAD.t} y2={H - PAD.b} stroke="var(--border-strong)" />
               <text x={(W + PAD.l) / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--text-secondary)">{xMeta.label}</text>
               <text x={14} y={(H - PAD.b + PAD.t) / 2} textAnchor="middle" fontSize="12" fill="var(--text-secondary)" transform={`rotate(-90 14 ${(H - PAD.b + PAD.t) / 2})`}>{yMeta.label}</text>
+
+              <line x1={sx(xMid)} x2={sx(xMid)} y1={PAD.t} y2={H - PAD.b} stroke="var(--text-tertiary)" strokeDasharray="4 4" opacity={0.6} />
+              <line x1={PAD.l} x2={W - PAD.r} y1={sy(yMid)} y2={sy(yMid)} stroke="var(--text-tertiary)" strokeDasharray="4 4" opacity={0.6} />
+              {[
+                ["Scale & quality", W - PAD.r - 8, PAD.t + 16, "end"],
+                ["Niche gems", PAD.l + 8, PAD.t + 16, "start"],
+                ["Big but thin", W - PAD.r - 8, H - PAD.b - 10, "end"],
+                ["Skip", PAD.l + 8, H - PAD.b - 10, "start"],
+              ].map(([label, x, y, anchor]) => (
+                <text key={String(label)} x={Number(x)} y={Number(y)} textAnchor={anchor as "start" | "end"} fontSize="10" fill="var(--text-tertiary)" opacity={0.8}>{label}</text>
+              ))}
 
               {list.map((c) => {
                 const s = c.scores[lens];
@@ -155,7 +212,8 @@ export default function Scatter() {
             })()}
           </div>
         </Card>
-        <p className="text-caption text-tertiary">{list.length.toLocaleString()} eligible counties plotted. Click a dot to open its profile.</p>
+        )}
+        <p className="text-caption text-tertiary">{list.length.toLocaleString()} eligible counties plotted. Quadrant lines sit at the medians of the plotted values. Click a dot to open its profile.</p>
       </div>
     </div>
   );

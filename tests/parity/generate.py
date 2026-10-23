@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import shutil
 
 import numpy as np
 
@@ -205,6 +206,12 @@ def _export_web_catalog(cfg) -> None:
     target = paths.WEB / "src" / "data" / "catalog.generated.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(out, indent=2), encoding="utf-8")
+
+    # Serve the exact model config for audit/download. Copying here keeps the
+    # public file in lockstep with the generated catalogue and config hash.
+    public_data = paths.WEB / "public" / "data"
+    public_data.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(paths.METRICS_YAML, public_data / "metrics.yaml")
 
 
 if __name__ == "__main__":

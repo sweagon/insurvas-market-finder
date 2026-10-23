@@ -109,3 +109,9 @@ def test_every_declared_unit_has_a_contract(cfg, catalog) -> None:
     assert catalog["units"], "no units declared"
     for metric in cfg.metrics:
         assert metric.unit in catalog["units"]
+
+
+def test_public_model_config_is_current() -> None:
+    served = paths.WEB_PUBLIC_DATA / "metrics.yaml"
+    assert served.exists(), "run `make build-data` to serve the model config"
+    assert served.read_bytes() == Path(paths.METRICS_YAML).read_bytes()

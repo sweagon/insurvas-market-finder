@@ -31,6 +31,9 @@ const PrintBrief = lazy(() => import("./views/PrintBrief"));
 const Drawer = lazy(() =>
   import("./design-system/overlays/Drawer").then((m) => ({ default: m.Drawer })),
 );
+const BriefPreview = lazy(() =>
+  import("./design-system/overlays/BriefPreview").then((m) => ({ default: m.BriefPreview })),
+);
 const Modal = lazy(() =>
   import("./design-system/overlays/Modal").then((m) => ({ default: m.Modal })),
 );
@@ -91,6 +94,7 @@ function Shell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
@@ -186,6 +190,9 @@ function Shell() {
       <Modal open={settingsOpen} onOpenChange={setSettingsOpen} title="Settings"><SettingsPanel /></Modal>
       <Modal open={shareOpen} onOpenChange={setShareOpen} title="Share this view"><ShareDialog onDone={() => setShareOpen(false)} /></Modal>
       <Modal open={exportOpen} onOpenChange={setExportOpen} title="Export"><ExportDialog onDone={() => setExportOpen(false)} /></Modal>
+      <Suspense fallback={null}>
+        <BriefPreview open={briefOpen} onOpenChange={setBriefOpen} fips={selected?.fips ?? null} lens={lens} areaName={selected ? `${selected.name}, ${selected.state}` : undefined} />
+      </Suspense>
       <Modal open={mobileNavOpen} onOpenChange={setMobileNavOpen} title="Menu" side="left">
         <nav className="space-y-1">
           {(["explore", "rankings", "compare", "scatter", "sensitivity", "methodology"] as const).map((v) => (
@@ -215,6 +222,9 @@ function Shell() {
             <div className="flex items-center justify-between gap-2">
               <span className="text-caption text-tertiary">ACS 2020–2024 · {compare.length} selected</span>
               <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setBriefOpen(true)} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                  Brief
+                </button>
                 <Link to={`/area/${selected.fips}`} className="rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
                   Full page
                 </Link>

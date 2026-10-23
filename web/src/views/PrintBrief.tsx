@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useStore } from "../state/store";
+import { useStore, weightsFor } from "../state/store";
 import { Brand } from "../design-system/patterns/Brand";
+import { Waterfall } from "../design-system/charts";
 import { EmptyState } from "../design-system/patterns/states";
 import { SUBSCORE_COLOR, SUBSCORE_LABEL, SUBSCORE_ORDER } from "../state/lensMeta";
 import { CATALOG_CONFIG_HASH } from "../data/types";
@@ -40,6 +41,38 @@ export default function PrintBrief() {
   const lensInfo = catalog?.lenses?.[lens];
   const metrics = catalog?.metrics ?? [];
   const meta = catalog?.meta;
+  const weights = weightsFor(lens);
+  const availableWeight = SUBSCORE_ORDER.reduce(
+    (sum, ss) => sum + (Number.isFinite(s.subscores?.[ss]) ? weights[ss] : 0),
+    0,
+  );
+  const contributions = SUBSCORE_ORDER.map((ss) => ({
+    id: ss,
+    label: SUBSCORE_LABEL[ss],
+    value: typeof s.subscores?.[ss] === "number" && availableWeight > 0 ? (s.subscores[ss] * weights[ss]) / availableWeight : 0,
+    color: SUBSCORE_COLOR[ss],
+  })).filter((x) => x.value > 0);
+
+  const lookalikes = (() => {
+    const target = SUBSCORE_ORDER.map((ss) => s.subscores?.[ss] ?? NaN);
+    return counties
+      .filter((x) => x.fips !== c.fips && x.scores[lens].eligible)
+      .map((x) => {
+        let sum = 0;
+        let n = 0;
+        SUBSCORE_ORDER.forEach((ss, i) => {
+          const v = x.scores[lens].subscores?.[ss];
+          if (typeof v === "number" && Number.isFinite(target[i])) {
+            sum += (v - target[i]) ** 2;
+            n += 1;
+          }
+        });
+        const distance = n ? Math.sqrt(sum / n) : Infinity;
+        return { county: x, similarity: Number.isFinite(distance) ? Math.max(0, 100 - distance) : 0 };
+      })
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 3);
+  })();
 
   return (
     <div className="print-sheet min-h-screen px-6 py-8 print:p-0">
@@ -97,6 +130,36 @@ export default function PrintBrief() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section>
+          <h2 className="border-b border-default pb-1 text-h3 text-primary">Why this score</h2>
+          <p className="mt-2 text-caption text-secondary">Each bar is a sub-score multiplied by its normalised lens weight; bars sum to the score.</p>
+          <div className="mt-2">
+            <Waterfall items={contributions} height={170} ariaLabel={`Contribution waterfall for ${c.name}`} />
+          </div>
+        </section>
+
+        <section>
+          <h2 className="border-b border-default pb-1 text-h3 text-primary">Lookalike counties</h2>
+          <table className="mt-2 w-full text-body-sm">
+            <thead>
+              <tr className="border-b border-subtle text-micro uppercase text-tertiary">
+                <th className="py-1 text-left font-medium">Area</th>
+                <th className="py-1 text-right font-medium">Score</th>
+                <th className="py-1 text-right font-medium">Profile similarity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lookalikes.map(({ county, similarity }) => (
+                <tr key={county.fips} className="border-b border-subtle">
+                  <td className="py-1 text-secondary">{county.name}, {county.state}</td>
+                  <td className="num py-1 text-right text-primary">{score(county.scores[lens].total)}</td>
+                  <td className="num py-1 text-right text-secondary">{similarity.toFixed(0)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
 
         <section>
