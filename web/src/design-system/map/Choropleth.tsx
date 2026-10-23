@@ -132,6 +132,8 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
 
   const live = useRef({ prepared, values, flags, colors, breaks, selectedFips, compareFips, fit, size, tokens });
 
+  const drawRef = useRef<() => void>(() => {});
+
   const draw = useCallback(() => {
     raf.current = 0;
     const canvas = canvasRef.current;
@@ -147,7 +149,7 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
       w = rect?.width ?? 0;
       h = rect?.height ?? 0;
       if (!w || !h) {
-        requestDraw();
+        raf.current = requestAnimationFrame(drawRef.current);
         return;
       }
       setSize({ w, h });
@@ -178,7 +180,11 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
 
   const requestDraw = useCallback(() => {
     if (raf.current) return;
-    raf.current = requestAnimationFrame(draw);
+    raf.current = requestAnimationFrame(drawRef.current);
+  }, []);
+
+  useEffect(() => {
+    drawRef.current = draw;
   }, [draw]);
 
   useEffect(() => {
