@@ -16,6 +16,7 @@ interface PreferencesValue {
   theme: Theme;
   density: Density;
   palette: Palette;
+  sidebarCollapsed: boolean;
   reduceMotion: boolean;
   reduceTransparency: boolean;
   setTheme: (t: Theme) => void;
@@ -23,6 +24,8 @@ interface PreferencesValue {
   setDensity: (d: Density) => void;
   toggleDensity: () => void;
   setPalette: (p: Palette) => void;
+  setSidebarCollapsed: (v: boolean) => void;
+  toggleSidebar: () => void;
   setReduceMotion: (v: boolean) => void;
   setReduceTransparency: (v: boolean) => void;
 }
@@ -68,6 +71,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [palette, setPaletteState] = useState<Palette>(() =>
     read<Palette>("insurvas.palette", "default"),
   );
+  const [sidebarCollapsed, setSidebarCollapsedState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("insurvas.sidebarCollapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
   const [reduceMotion, setReduceMotionState] = useState<boolean>(() => {
     try {
       return localStorage.getItem("insurvas.reduceMotion") === "1";
@@ -96,6 +106,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     write("insurvas.palette", palette);
   }, [palette]);
   useEffect(() => {
+    try {
+      localStorage.setItem("insurvas.sidebarCollapsed", sidebarCollapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarCollapsed]);
+  useEffect(() => {
     document.documentElement.dataset.reduceMotion = reduceMotion ? "1" : "0";
     write("insurvas.reduceMotion", reduceMotion ? "1" : "0");
   }, [reduceMotion]);
@@ -112,12 +129,17 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     () => setDensityState((d) => (d === "comfortable" ? "compact" : "comfortable")),
     [],
   );
+  const toggleSidebar = useCallback(
+    () => setSidebarCollapsedState((v) => !v),
+    [],
+  );
 
   const value = useMemo<PreferencesValue>(
     () => ({
       theme,
       density,
       palette,
+      sidebarCollapsed,
       reduceMotion,
       reduceTransparency,
       setTheme: setThemeState,
@@ -125,10 +147,12 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setDensity: setDensityState,
       toggleDensity,
       setPalette: setPaletteState,
+      setSidebarCollapsed: setSidebarCollapsedState,
+      toggleSidebar,
       setReduceMotion: setReduceMotionState,
       setReduceTransparency: setReduceTransparencyState,
     }),
-    [theme, density, palette, reduceMotion, reduceTransparency, toggleTheme, toggleDensity],
+    [theme, density, palette, sidebarCollapsed, reduceMotion, reduceTransparency, toggleTheme, toggleDensity, toggleSidebar],
   );
 
   return (

@@ -17,6 +17,17 @@ import { Monogram, RankBadge, ScoreChip } from "./design-system/primitives/badge
 import { stateAbbr, popCompact } from "./state/format";
 import { LENS_COLOR } from "./state/lensMeta";
 import type { LensId } from "./data/types";
+import {
+  BarChart3,
+  Download,
+  Gauge,
+  LayoutGrid,
+  List,
+  MapIcon,
+  Settings,
+  Share2,
+  Table2,
+} from "./design-system/icons";
 
 const Explore = lazy(() => import("./views/Explore"));
 const Rankings = lazy(() => import("./views/Rankings"));
@@ -106,6 +117,7 @@ function Shell() {
     lens,
     compare,
     toggleCompare,
+    source,
   } = useStore();
   const { view, setView } = useView();
   const selected = counties.find((c) => c.fips === selectedFips);
@@ -233,7 +245,7 @@ function Shell() {
       </a>
       <div className="grid h-[100dvh] min-h-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
       <aside className="col-start-1 row-span-2 hidden min-h-0 md:block">
-        <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
+        <Sidebar />
       </aside>
       <header className="col-start-2 row-start-1 min-w-0">
         <TopBar
@@ -278,15 +290,87 @@ function Shell() {
         <BriefPreview open={briefOpen} onOpenChange={setBriefOpen} fips={selected?.fips ?? null} lens={lens} areaName={selected ? `${selected.name}, ${selected.state}` : undefined} />
       </Suspense>
       <Modal open={mobileNavOpen} onOpenChange={setMobileNavOpen} title="Menu" side="left">
-        <nav className="space-y-1">
-          {(["explore", "rankings", "compare", "scatter", "sensitivity", "methodology"] as const).map((v) => (
-            <button key={v} type="button" onClick={() => { setView(v); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body capitalize text-secondary hover:bg-surface2 hover:text-primary">{v}</button>
+        <div className="space-y-5">
+          <button
+            type="button"
+            onClick={() => { setView("compare"); setMobileNavOpen(false); }}
+            className="flex h-control w-full items-center justify-center gap-2 rounded-control bg-accent text-body-sm font-medium text-onaccent transition-colors duration-fast hover:bg-accenthover"
+          >
+            <LayoutGrid size={16} aria-hidden />
+            New comparison
+          </button>
+
+          {[
+            {
+              label: "Explore",
+              items: [
+                { id: "explore" as const, label: "Map", icon: <MapIcon size={18} /> },
+                { id: "rankings" as const, label: "Rankings", icon: <List size={18} /> },
+                { id: "compare" as const, label: "Compare", icon: <LayoutGrid size={18} /> },
+              ],
+            },
+            {
+              label: "Analyze",
+              items: [
+                { id: "scatter" as const, label: "Scatter explorer", icon: <BarChart3 size={18} /> },
+                { id: "sensitivity" as const, label: "Sensitivity lab", icon: <Gauge size={18} /> },
+              ],
+            },
+            {
+              label: "Reference",
+              items: [{ id: "methodology" as const, label: "Methodology", icon: <Table2 size={18} /> }],
+            },
+          ].map((group) => (
+            <div key={group.label}>
+              <p className="mb-1 px-1 text-micro uppercase text-tertiary">{group.label}</p>
+              <nav className="space-y-1">
+                {group.items.map((item) => {
+                  const active = view === item.id;
+                  const badge = item.id === "compare" ? compare.length : 0;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { setView(item.id); setMobileNavOpen(false); }}
+                      aria-current={active ? "page" : undefined}
+                      className={`relative flex w-full items-center gap-3 rounded-control px-3 py-2.5 text-left text-body transition-colors duration-fast ${
+                        active ? "bg-surface2 font-medium text-primary" : "text-secondary hover:bg-surface2 hover:text-primary"
+                      }`}
+                    >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" aria-hidden />
+                      )}
+                      <span className={active ? "text-accenttext" : ""}>{item.icon}</span>
+                      <span className="flex-1">{item.label}</span>
+                      {badge > 0 && (
+                        <span className="rounded-pill bg-accentsubtle px-1.5 text-caption text-accenttext">{badge}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
           ))}
-        </nav>
-        <div className="mt-4 space-y-1 border-t border-subtle pt-3">
-          <button type="button" onClick={() => { setShareOpen(true); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Share this view</button>
-          <button type="button" onClick={() => { setExportOpen(true); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Export data</button>
-          <button type="button" onClick={() => { setSettingsOpen(true); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Settings and theme</button>
+
+          <div className="space-y-1 border-t border-subtle pt-3">
+            <button type="button" onClick={() => { setShareOpen(true); setMobileNavOpen(false); }} className="flex w-full items-center gap-3 rounded-control px-3 py-2.5 text-left text-body text-secondary transition-colors duration-fast hover:bg-surface2 hover:text-primary">
+              <Share2 size={18} aria-hidden />
+              Share this view
+            </button>
+            <button type="button" onClick={() => { setExportOpen(true); setMobileNavOpen(false); }} className="flex w-full items-center gap-3 rounded-control px-3 py-2.5 text-left text-body text-secondary transition-colors duration-fast hover:bg-surface2 hover:text-primary">
+              <Download size={18} aria-hidden />
+              Export data
+            </button>
+            <button type="button" onClick={() => { setSettingsOpen(true); setMobileNavOpen(false); }} className="flex w-full items-center gap-3 rounded-control px-3 py-2.5 text-left text-body text-secondary transition-colors duration-fast hover:bg-surface2 hover:text-primary">
+              <Settings size={18} aria-hidden />
+              Settings and theme
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-subtle pt-3 text-caption text-tertiary">
+            <span>{source === "live" ? "Live data" : "Snapshot"}</span>
+            <span className="font-mono">{catalog ? `ACS ${catalog.meta.vintages.acs}` : ""}</span>
+          </div>
         </div>
       </Modal>
       {selected && selectedScore && view !== "area" && (

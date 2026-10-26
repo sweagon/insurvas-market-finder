@@ -53,7 +53,7 @@
   --control-height: 40px;
   --card-pad: 20px;
   --shell-sidebar: 248px;
-  --shell-rail: 72px;
+  --shell-rail: calc(var(--control-height) + 1rem);
 }
 
 :root[data-density="compact"] {

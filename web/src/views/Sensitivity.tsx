@@ -99,6 +99,9 @@ export default function Sensitivity() {
           </div>
         }
       />
+      <p className="sr-only" role="status" aria-live="polite">
+        {pending ? "Re-scoring counties" : result ? `Re-scored ${result.n.toLocaleString()} eligible counties` : ""}
+      </p>
       <div className="grid flex-1 grid-cols-1 gap-4 overflow-auto p-4 lg:grid-cols-[380px_minmax(0,1fr)] md:p-6">
         <Card title="Weight mixer">
           <div className="mb-1 flex items-center justify-between text-caption">
@@ -137,40 +140,39 @@ export default function Sensitivity() {
         </Card>
 
         <div className="space-y-4">
-          <p className="sr-only" role="status" aria-live="polite">
-            {pending ? "Re-scoring counties" : result ? `Re-scored ${result.n.toLocaleString()} eligible counties` : ""}
-          </p>
           {error && (
             <Card>
               <ErrorState message={error} />
             </Card>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Card bodyClassName="p-4">
-              <p className="text-micro uppercase text-tertiary">
-                Eligible re-scored
-              </p>
-              <p className="mt-1 num text-num-lg">
-                {pending ? <span className="text-tertiary">…</span> : (result?.n?.toLocaleString() ?? "—")}
-              </p>
-            </Card>
-            <Card bodyClassName="p-4">
-              <p className="text-micro uppercase text-tertiary">
-                Top-50 overlap
-              </p>
-              <p className="mt-1 num text-num-lg">
-                {result ? `${Math.round((result.overlap / 50) * 100)}%` : "—"}
-              </p>
-            </Card>
-            <Card bodyClassName="p-4">
-              <p className="text-micro uppercase text-tertiary">Weight total</p>
-              <p
-                className={`mt-1 num text-num-lg ${Math.round(sum) === 100 ? "text-positive" : "text-warning"}`}
-              >
-                {Math.round(sum)}%
-              </p>
-            </Card>
-          </div>
+          <Card title="Session impact">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-micro uppercase text-tertiary">
+                  Eligible re-scored
+                </p>
+                <p className="mt-1 num text-num-lg">
+                  {pending ? <span className="text-tertiary">…</span> : (result?.n?.toLocaleString() ?? "—")}
+                </p>
+              </div>
+              <div>
+                <p className="text-micro uppercase text-tertiary">
+                  Top-50 overlap
+                </p>
+                <p className="mt-1 num text-num-lg">
+                  {result ? `${Math.round((result.overlap / 50) * 100)}%` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-micro uppercase text-tertiary">Weight total</p>
+                <p
+                  className={`mt-1 num text-num-lg ${Math.round(sum) === 100 ? "text-positive" : "text-warning"}`}
+                >
+                  {Math.round(sum)}%
+                </p>
+              </div>
+            </div>
+          </Card>
           <Card
             title="Largest rank moves"
             info="Relative to the published lens ranking. Positive means the county rises under your weights."
