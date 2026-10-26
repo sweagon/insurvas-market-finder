@@ -252,7 +252,7 @@ export default function Explore() {
         </button>
       </div>
 
-      <div className="absolute right-3 top-3 z-panel flex flex-col gap-1 rounded-control border border-subtle bg-surface1/95 p-1 shadow-l2 backdrop-blur md:right-4 md:top-4">
+      <div className="glass absolute right-3 top-3 z-panel flex flex-col gap-1 rounded-control border p-1 shadow-l2 md:right-4 md:top-4">
         <button type="button" onClick={() => mapRef.current?.zoomIn()} aria-label="Zoom in" className="flex h-row w-row items-center justify-center rounded-control md:h-control md:w-control text-secondary hover:bg-surface2 hover:text-primary">
           <Plus size={17} aria-hidden />
         </button>
@@ -267,7 +267,7 @@ export default function Explore() {
       <div className="absolute bottom-4 left-4 top-4 z-panel hidden w-[340px] max-w-[calc(100vw-2rem)] flex-col gap-3 md:flex">
         <div className="shrink-0">{layerPicker}</div>
         {answerOpen && top && (
-          <div className="hidden shrink-0 rounded-card border border-accentborder bg-surface1/95 p-4 shadow-l3 backdrop-blur lg:block">
+          <div className="glass hidden shrink-0 rounded-card border p-4 shadow-l3 lg:block">
             <div className="flex items-start justify-between gap-2">
               <p className="min-w-0 text-micro uppercase text-tertiary">Top pick · {catalog?.lenses[lens]?.label ?? lens}</p>
               <button type="button" onClick={dismissAnswer} aria-label="Dismiss answer card" className="shrink-0 rounded p-0.5 text-tertiary hover:text-primary">
@@ -329,7 +329,7 @@ export default function Explore() {
           <button
             type="button"
             onClick={() => select(focus.fips)}
-            className="flex w-full items-center gap-3 rounded-card border border-subtle bg-surface1/95 p-3 text-left shadow-l3 backdrop-blur"
+            className="glass flex w-full items-center gap-3 rounded-card border p-3 text-left shadow-l3"
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate text-body-sm text-primary">{focus.name}, {focus.state}</span>

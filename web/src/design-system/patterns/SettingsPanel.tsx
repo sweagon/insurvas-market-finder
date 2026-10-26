@@ -2,7 +2,7 @@ import { usePreferences, type Density, type Palette } from "../providers/Prefere
 import { SegmentedControl } from "../primitives/tabs";
 import { Switch } from "../primitives/inputs";
 
-/** Settings popover content: theme, density, palette, sidebar, reduce motion. */
+/** Settings popover content: theme, density, palette, reduce motion. */
 export function SettingsPanel() {
   const p = usePreferences();
   return (
@@ -34,16 +34,6 @@ export function SettingsPanel() {
           options={[
             { value: "default", label: "Default" },
             { value: "colorblind", label: "Colorblind-safe" },
-          ]}
-        />
-      </Row>
-      <Row label="Sidebar">
-        <SegmentedControl
-          value={p.sidebarTone}
-          onValueChange={(v) => p.setSidebarTone(v as "dark" | "light")}
-          options={[
-            { value: "dark", label: "Dark" },
-            { value: "light", label: "Light" },
           ]}
         />
       </Row>

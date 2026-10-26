@@ -32,7 +32,7 @@ export function TopBar({
   const { theme } = usePreferences();
 
   return (
-    <header className="sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-2 border-b border-subtle bg-surface1/95 px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] backdrop-blur md:gap-3 md:px-5">
+    <header className="glass sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-2 border-b px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] md:gap-3 md:px-5">
       <span className="md:hidden">
         <Brand tone={theme} variant="mark" className="h-7 w-7" alt="Insurvas Market Finder" />
       </span>

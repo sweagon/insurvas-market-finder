@@ -53,7 +53,7 @@ export function MapLegend({
   return (
     <section
       aria-label={`${layerLabel} map legend`}
-      className={cn("rounded-card border border-subtle bg-surface1/98 p-3 shadow-l3 backdrop-blur", className)}
+      className={cn("glass rounded-card border p-3 shadow-l3", className)}
     >
       <div className="flex items-center gap-2">
         <h2 className="min-w-0 truncate text-caption font-medium text-primary">{layerLabel}</h2>

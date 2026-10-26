@@ -11,13 +11,11 @@ import {
 export type Theme = "dark" | "light";
 export type Density = "comfortable" | "compact";
 export type Palette = "default" | "colorblind";
-export type SidebarTone = "dark" | "light";
 
 interface PreferencesValue {
   theme: Theme;
   density: Density;
   palette: Palette;
-  sidebarTone: SidebarTone;
   reduceMotion: boolean;
   reduceTransparency: boolean;
   setTheme: (t: Theme) => void;
@@ -25,7 +23,6 @@ interface PreferencesValue {
   setDensity: (d: Density) => void;
   toggleDensity: () => void;
   setPalette: (p: Palette) => void;
-  setSidebarTone: (s: SidebarTone) => void;
   setReduceMotion: (v: boolean) => void;
   setReduceTransparency: (v: boolean) => void;
 }
@@ -71,9 +68,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [palette, setPaletteState] = useState<Palette>(() =>
     read<Palette>("insurvas.palette", "default"),
   );
-  const [sidebarTone, setSidebarToneState] = useState<SidebarTone>(() =>
-    read<SidebarTone>("insurvas.sidebar", "dark"),
-  );
   const [reduceMotion, setReduceMotionState] = useState<boolean>(() => {
     try {
       return localStorage.getItem("insurvas.reduceMotion") === "1";
@@ -102,10 +96,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     write("insurvas.palette", palette);
   }, [palette]);
   useEffect(() => {
-    document.documentElement.dataset.sidebar = sidebarTone;
-    write("insurvas.sidebar", sidebarTone);
-  }, [sidebarTone]);
-  useEffect(() => {
     document.documentElement.dataset.reduceMotion = reduceMotion ? "1" : "0";
     write("insurvas.reduceMotion", reduceMotion ? "1" : "0");
   }, [reduceMotion]);
@@ -128,7 +118,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       theme,
       density,
       palette,
-      sidebarTone,
       reduceMotion,
       reduceTransparency,
       setTheme: setThemeState,
@@ -136,11 +125,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setDensity: setDensityState,
       toggleDensity,
       setPalette: setPaletteState,
-      setSidebarTone: setSidebarToneState,
       setReduceMotion: setReduceMotionState,
       setReduceTransparency: setReduceTransparencyState,
     }),
-    [theme, density, palette, sidebarTone, reduceMotion, reduceTransparency, toggleTheme, toggleDensity],
+    [theme, density, palette, reduceMotion, reduceTransparency, toggleTheme, toggleDensity],
   );
 
   return (

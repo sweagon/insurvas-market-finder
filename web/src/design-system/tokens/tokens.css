@@ -98,6 +98,11 @@
   --shadow-l2: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --shadow-l3: 0 12px 32px rgba(0, 0, 0, 0.45);
   --shadow-l4: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --sidebar-bg: #141311;
+  --sidebar-text: #f5f1ea;
+  --sidebar-text-secondary: #b9b2a7;
+  --sidebar-border: rgba(255, 244, 230, 0.08);
+  --sidebar-active: #24221e;
 }
 
 :root[data-theme="light"] {
@@ -136,24 +141,14 @@
   --shadow-l2: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   --shadow-l3: 0 12px 32px rgba(20, 17, 12, 0.12);
   --shadow-l4: 0 24px 64px rgba(20, 17, 12, 0.14);
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #17140f;
+  --sidebar-text-secondary: #5c554b;
+  --sidebar-border: rgba(20, 17, 12, 0.07);
+  --sidebar-active: #f0ede8;
 }
 
-/* Light theme keeps the dark sidebar from R5 as an option. */
-:root[data-theme="light"][data-sidebar="dark"],
-:root[data-theme="dark"][data-sidebar="dark"] {
-  --sidebar-bg: #141311;
-  --sidebar-text: #f5f1ea;
-  --sidebar-text-secondary: #b9b2a7;
-  --sidebar-border: rgba(255, 244, 230, 0.08);
-  --sidebar-active: #24221e;
-}
-:root[data-sidebar="light"] {
-  --sidebar-bg: var(--bg-surface-1);
-  --sidebar-text: var(--text-primary);
-  --sidebar-text-secondary: var(--text-secondary);
-  --sidebar-border: var(--border-subtle);
-  --sidebar-active: var(--bg-surface-3);
-}
+/* The sidebar follows the active theme. */
 
 /* Data-visualisation palettes (B.3) */
 :root {

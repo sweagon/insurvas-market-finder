@@ -40,11 +40,8 @@ const REFERENCE: NavItem[] = [
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const { compare, catalog, source } = useStore();
   const { view, setView } = useView();
-  const { sidebarTone, setSidebarTone } = usePreferences();
-  const dark =
-    sidebarTone === "dark" &&
-    (typeof document === "undefined" ||
-      document.documentElement.dataset.theme !== "light");
+  const { theme } = usePreferences();
+  const dark = theme === "dark";
 
   const groups: { label: string; items: NavItem[] }[] = [
     { label: "Explore", items: EXPLORE },
@@ -160,13 +157,9 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
         className="flex h-control shrink-0 items-center justify-between gap-2 border-t px-3 text-caption"
         style={{ borderColor: "var(--sidebar-border)" }}
       >
-        <button
-          type="button"
-          onClick={() => setSidebarTone(dark ? "light" : "dark")}
-          className="hidden whitespace-nowrap xl:inline text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text)]"
-        >
+        <span className="hidden whitespace-nowrap xl:inline text-[var(--sidebar-text-secondary)]">
           {source === "live" ? "Live data" : "Snapshot"}
-        </button>
+        </span>
         <span className="hidden whitespace-nowrap xl:inline font-mono text-mono text-[var(--sidebar-text-secondary)]">
           {catalog ? `ACS ${catalog.meta.vintages.acs}` : ""}
         </span>

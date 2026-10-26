@@ -18,7 +18,7 @@ export function BottomTabBar({ onMore }: { onMore: () => void }) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-sticky flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-stretch border-t border-subtle bg-surface1/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="glass fixed inset-x-0 bottom-0 z-sticky flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-stretch border-t pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {ITEMS.map((item) => {
         const active = view === item.id;
