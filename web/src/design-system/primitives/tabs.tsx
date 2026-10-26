@@ -61,7 +61,7 @@ export function PillTabs({
     <div
       role="tablist"
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-pill border border-subtle bg-surface2 p-0.5",
+        "inline-flex h-8 items-center gap-0.5 rounded-pill border border-subtle bg-surface2 p-0.5",
         className,
       )}
     >
@@ -108,6 +108,7 @@ export function SegmentedControl({
       role="radiogroup"
       className={cn(
         "inline-flex items-center gap-0.5 rounded-control border border-subtle bg-surface2 p-0.5",
+        size === "sm" ? "h-8" : "h-control",
         className,
       )}
     >
@@ -122,7 +123,8 @@ export function SegmentedControl({
             className={cn(
               "inline-flex items-center gap-1.5 rounded-[6px] font-medium transition-colors duration-fast",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
-              size === "sm" ? "px-2 py-1 text-caption" : "px-2.5 py-1.5 text-body-sm",
+              "h-full",
+              size === "sm" ? "px-2 text-caption" : "px-2.5 text-body-sm",
               active ? "bg-surface3 text-primary shadow-l2" : "text-secondary hover:text-primary",
             )}
           >

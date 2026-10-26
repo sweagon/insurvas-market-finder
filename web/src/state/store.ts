@@ -26,6 +26,9 @@ export interface Filters {
 
 export type SubScoreWeights = Record<SubScoreId, number>;
 
+/** Map fill: the overall opportunity score, or one sub-score. */
+export type MapLayer = "score" | SubScoreId;
+
 interface State {
   source: Source;
   catalog: MetaCatalog | null;
@@ -37,6 +40,7 @@ interface State {
   compare: string[];
   filters: Filters;
   chart: ChartMode;
+  mapLayer: MapLayer;
   loaded: boolean;
   loadError: string | null;
   loadedLenses: LensId[];
@@ -65,6 +69,7 @@ interface State {
   setFilter: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
   clearFilters: () => void;
   setChart: (patch: Partial<ChartMode>) => void;
+  setMapLayer: (layer: MapLayer) => void;
 }
 
 /** Maximum number of counties that can be compared side by side. */
@@ -96,6 +101,7 @@ export const useStore = create<State>((set, get) => ({
   compare: [],
   filters: { states: [], minPop60: 2000, minScore: 0, query: "", category: "all" },
   chart: { profile: "radar", data: "chart" },
+  mapLayer: "score",
   loaded: false,
   loadError: null,
   loadedLenses: [],
@@ -161,4 +167,5 @@ export const useStore = create<State>((set, get) => ({
       },
     }),
   setChart: (patch) => set((s) => ({ chart: { ...s.chart, ...patch } })),
+  setMapLayer: (mapLayer) => set({ mapLayer }),
 }));

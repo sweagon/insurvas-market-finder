@@ -195,12 +195,12 @@ export default function Rankings() {
           type="button"
           onClick={() => setFiltersOpen((v) => !v)}
           aria-expanded={filtersOpen}
-          className="min-h-10 rounded-control border border-default px-3 text-body-sm text-secondary"
+          className="min-h-control rounded-control border border-default px-3 text-body-sm text-secondary"
         >
           Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}
         </button>
         <span className="ml-auto text-caption text-tertiary">{list.length.toLocaleString()} areas</span>
-        {dirty && <button type="button" onClick={clearFilters} className="min-h-10 px-2 text-caption text-accenttext">Clear</button>}
+        {dirty && <button type="button" onClick={clearFilters} className="min-h-control px-2 text-caption text-accenttext">Clear</button>}
       </div>
 
       <div className={filtersOpen ? "flex flex-wrap items-end gap-3 border-b border-subtle bg-surface1 px-4 py-3 md:px-6" : "hidden flex-wrap items-end gap-3 border-b border-subtle bg-surface1 px-4 py-3 md:flex md:px-6"}>
@@ -278,8 +278,7 @@ export default function Rankings() {
                     <RankBadge rank={s.rank} />
                     <ScoreChip value={s.total} />
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Monogram abbr={stateAbbr(c.state)} size={24} color={LENS_COLOR[lens]} />
+                  <div className="mt-2 flex items-center gap-1.5">
                     <div>
                       <div className="text-primary">{c.name}</div>
                       <div className="text-caption text-tertiary">{c.state} • {popCompact(c.pop60)}</div>

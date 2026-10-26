@@ -120,13 +120,22 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
 
   const fit = useMemo(() => {
     if (!size.w || !size.h) return { scale: 1, tx: 0, ty: 0 };
+    // Keep the whole map visible beside the shell's floating panels rather
+    // than under them: the left rail (layer picker, top areas, legend) and the
+    // detail card on wide screens.
+    const wide = size.w >= 1536;
+    const desktop = size.w >= 1024;
+    const padL = desktop ? 372 : 12;
+    const padR = wide ? 356 : 12;
+    const padB = size.w >= 768 ? 244 : 128;
+    const padT = 60;
     const bw = bbox[2] - bbox[0];
     const bh = bbox[3] - bbox[1];
-    const scale = Math.min(size.w / bw, size.h / bh) * 0.96;
+    const scale = Math.min((size.w - padL - padR) / bw, (size.h - padT - padB) / bh) * 0.96;
     return {
       scale,
-      tx: (size.w - bw * scale) / 2 - bbox[0] * scale,
-      ty: (size.h - bh * scale) / 2 - bbox[1] * scale,
+      tx: padL + (size.w - padL - padR - bw * scale) / 2 - bbox[0] * scale,
+      ty: padT + (size.h - padT - padB - bh * scale) / 2 - bbox[1] * scale,
     };
   }, [bbox, size]);
 
@@ -168,7 +177,7 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
       flags: state.flags,
       selectedFips: state.selectedFips,
       compareFips: state.compareFips,
-      hoveredFips: null,
+      hoveredFips: hovered.current,
       noDataFill: state.tokens.noDataFill,
       countyStroke: state.tokens.countyStroke,
       stateStroke: state.tokens.stateStroke,
@@ -292,7 +301,10 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
   };
 
   const hideTooltip = () => {
-    hovered.current = null;
+    if (hovered.current) {
+      hovered.current = null;
+      requestDraw();
+    }
     if (tooltipRef.current) tooltipRef.current.style.visibility = "hidden";
   };
 
@@ -305,6 +317,7 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
     }
     if (hovered.current !== fips) {
       hovered.current = fips;
+      requestDraw();
       const card = hoverCard(fips);
       if (tooltipTitle.current) tooltipTitle.current.textContent = card.title;
       if (tooltipDetail.current) tooltipDetail.current.textContent = card.detail;
@@ -334,6 +347,7 @@ export const Choropleth = forwardRef<ChoroplethHandle, ChoroplethProps>(function
         onPointerLeave={hideTooltip}
         onBlur={hideTooltip}
         onClick={(event) => {
+          hideTooltip();
           const fips = hit(event.clientX, event.clientY);
           if (!fips) return;
           if (event.shiftKey) onShiftSelect(fips);

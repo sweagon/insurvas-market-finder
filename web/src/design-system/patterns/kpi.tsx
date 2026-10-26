@@ -78,7 +78,7 @@ export function KpiCard({ label, value, info, delta, sparkline, link, className 
           </button>
         )}
       </div>
-      <div className="mt-2 num text-num-lg text-primary">{value}</div>
+      <div className="mt-2 truncate num text-num-lg text-primary" title={value}>{value}</div>
       {(delta || sparkline) && (
         <div className="mt-2 flex items-center justify-between">
           {delta}
@@ -98,11 +98,11 @@ export function KpiStrip({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function KpiCell({ label, value, children, valueClassName }: { label: string; value: string; children?: React.ReactNode; valueClassName?: string }) {
+export function KpiCell({ label, value, children, valueClassName, className }: { label: string; value: string; children?: React.ReactNode; valueClassName?: string; className?: string }) {
   return (
-    <div className="min-w-0 p-[var(--card-pad)]">
+    <div className={cn("min-w-0 p-[var(--card-pad)]", className)}>
       <p className="text-micro uppercase text-tertiary">{label}</p>
-      <p className={cn("mt-1.5 num text-num-lg text-primary whitespace-nowrap", valueClassName)}>{value}</p>
+      <p className={cn("mt-1.5 truncate num text-num-lg text-primary whitespace-nowrap", valueClassName)} title={value}>{value}</p>
       {children && <div className="mt-1.5">{children}</div>}
     </div>
   );

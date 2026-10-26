@@ -35,7 +35,7 @@ export function Brand({
       width={w}
       height={h}
       decoding="async"
-      className={cn(variant === "mark" ? "h-8 w-8" : "h-5 w-auto", className)}
+      className={cn(variant === "mark" ? "h-8 w-8" : "h-auto w-full max-h-full", className)}
     />
   );
 }

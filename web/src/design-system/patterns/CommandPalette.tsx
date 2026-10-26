@@ -90,7 +90,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   return (
     <Modal open={open} onOpenChange={onOpenChange} title="Command palette">
       <div className="flex items-center gap-2 rounded-control border border-default bg-surface2 px-3">
-        <Search size={16} className="text-tertiary" aria-hidden />
+        <Search size={16} className="ml-1 mr-1 text-tertiary" aria-hidden />
         <input
           ref={inputRef}
           value={query}
@@ -98,7 +98,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           onKeyDown={onKeyDown}
           placeholder="Search counties, lenses, views…"
           aria-label="Command palette search"
-          className="h-10 w-full bg-transparent text-body text-primary outline-none placeholder:text-tertiary"
+          className="h-control w-full rounded-control bg-transparent px-2 text-body text-primary outline-none placeholder:text-tertiary"
         />
       </div>
       <div className="mt-3 max-h-[50vh] space-y-3 overflow-y-auto">

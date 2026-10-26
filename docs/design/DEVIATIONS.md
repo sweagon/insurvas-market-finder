@@ -6,7 +6,7 @@ the user-visible impact and how it is contained. Revisit these when the
 referenced constraint changes; do not silently "fix" one without updating this
 file.
 
-Last reviewed: 2026-10-23.
+Last reviewed: 2026-10-24.
 
 ---
 
@@ -181,3 +181,8 @@ These were real gaps, now fixed; kept here so the history is auditable.
 | Mobile shell ignored safe areas, `dvh` and the rubric breakpoints | `100dvh` shell, safe-area insets, 72 px rail from `md`, docked inspector from `2xl`, one-scroll `main` |
 | Shell/tables/charts assumed a mouse | 44 px touch targets, full-height mobile drawers/sheets, pointer-driven scatter tooltips, cards-first rankings on phones |
 | Theme always defaulted to dark | `prefers-color-scheme` when unset; reduced-transparency option; `@page`/break rules for the print brief |
+| Map-layer picker floated over the map and collided with the top-pick card | At `xl`+ the picker is a labelled chip grid in the Explore sidebar; the floating picker remains only below `lg`, and the left rail is a single column (picker, top pick, scrollable top areas, legend) |
+| Footer and sidebar footer bands had different heights, so their top borders did not align | Both bands are `40px` (`h-10`); the footer is one no-wrap line from `md`, with the link shortened to "Methodology" between `md` and `lg` |
+| Mobile top bar duplicated navigation already in the bottom tab bar | Removed the burger; all controls use `--control-height` (40px) so the lens control, search and icon buttons align |
+| Modal/drawer/sheet animations were referenced but `tailwindcss-animate` was not installed, so transitions were no-ops | Native keyframes in `index.css` (fade/pop/panel/page, 120–280ms), disabled by both `prefers-reduced-motion` and the in-app reduce-motion preference |
+| Compare tray sat below the source line on desktop | Detached island above the footer from `md`; a normal flow row above the footer on phones |

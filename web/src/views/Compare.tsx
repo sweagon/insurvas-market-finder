@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { MAX_COMPARE } from "../state/store";
 import { useStore } from "../state/store";
 import { PageHeader } from "../design-system/patterns/PageHeader";
 import { Card } from "../design-system/primitives/Card";
@@ -6,7 +7,8 @@ import { RankBadge, ScoreChip, Monogram } from "../design-system/primitives/badg
 import { popCompact, scoreRange, score, stateAbbr, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR, LENS_COLOR } from "../state/lensMeta";
 import { MetricLabel } from "../design-system/patterns/MetricLabel";
-import { ChartFrame, RadarChart, SubScoreTable, type RadarSeries } from "../design-system/charts";
+import { ChartFrame, RadarChart, SubScoreBars, SubScoreTable, type RadarSeries } from "../design-system/charts";
+import { Button } from "../design-system/primitives/Button";
 import { Check } from "../design-system/icons";
 import { estimateFlag } from "../state/estimate";
 import { FLAG_DESCRIPTIONS } from "../data/types";
@@ -35,13 +37,17 @@ export default function Compare() {
     [counties, lens],
   );
   const metrics = catalog?.metrics ?? [];
-  const radarSeries: RadarSeries[] = items.slice(0, 3).map((c, i) => ({
+  const COLORS = ["#5D8647", "#0072B2", "#E69F00", "#D55E00"];
+  const radarSeries: RadarSeries[] = items.slice(0, MAX_COMPARE).map((c, i) => ({
     id: c.fips,
     label: c.name,
-    color: ["#5D8647", "#0072B2", "#E69F00"][i],
+    color: COLORS[i % COLORS.length],
     values: SUBSCORE_ORDER.map((ss) => c.scores[lens].subscores?.[ss] ?? NaN),
   }));
   const radarAxes = SUBSCORE_ORDER.map((ss) => ({ id: ss, label: SUBSCORE_LABEL[ss] }));
+  const [profile, setProfile] = useState<"radar" | "bars">(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches ? "bars" : "radar",
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -77,13 +83,14 @@ export default function Compare() {
         {items.length > 0 && (
           <>
             <div className={`grid grid-cols-1 gap-4 ${items.length > 2 ? "lg:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-2"}`}>
-              {items.map((c) => {
+              {items.map((c, idx) => {
                 const s = c.scores[lens];
+                const color = COLORS[idx % COLORS.length];
                 return (
                   <Card key={c.fips}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        <Monogram abbr={stateAbbr(c.state)} size={32} color={LENS_COLOR[lens]} />
+                        <span className="h-6 w-6 shrink-0 rounded-pill" style={{ background: color }} aria-hidden />
                         <div className="min-w-0">
                           <div className="truncate text-body font-medium text-primary">{c.name}</div>
                           <div className="truncate text-caption text-tertiary">{c.state} • {c.fips}</div>
@@ -107,12 +114,26 @@ export default function Compare() {
 
             <ChartFrame
               title="Profile overlay"
-              subtitle={items.length > 3 ? `First three of ${items.length} areas` : `${items.length} areas`}
+              subtitle={`${items.length} area${items.length === 1 ? "" : "s"}`}
               vintage="ACS 2020–2024"
               summary="Overlaid sub-score profiles show which areas lead on size, need, affordability and reach."
               table={<SubScoreTable axes={radarAxes} series={radarSeries} />}
+              actions={
+                <div className="flex rounded-control border border-subtle p-0.5">
+                  <Button size="sm" variant={profile === "radar" ? "secondary" : "ghost"} aria-pressed={profile === "radar"} onClick={() => setProfile("radar")}>
+                    Radar
+                  </Button>
+                  <Button size="sm" variant={profile === "bars" ? "secondary" : "ghost"} aria-pressed={profile === "bars"} onClick={() => setProfile("bars")}>
+                    Bars
+                  </Button>
+                </div>
+              }
             >
-              <RadarChart axes={radarAxes} series={radarSeries} height={320} ariaLabel="Compare sub-score radar" />
+              {profile === "radar" ? (
+                <RadarChart axes={radarAxes} series={radarSeries} height={320} ariaLabel="Compare sub-score radar" />
+              ) : (
+                <SubScoreBars axes={radarAxes} series={radarSeries} className="py-2" />
+              )}
             </ChartFrame>
 
             <Card title="Sub-score breakdown">

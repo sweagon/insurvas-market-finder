@@ -29,10 +29,12 @@ export function Modal({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-modal bg-scrim data-[state=open]:animate-in data-[state=closed]:animate-out" />
+        <DialogPrimitive.Overlay className="anim-fade fixed inset-0 z-modal bg-scrim data-[state=open]:animate-in data-[state=closed]:animate-out" />
         <DialogPrimitive.Content
           className={cn(
             "fixed z-modal flex flex-col bg-surface1 shadow-l4 focus:outline-none",
+            side === "center" && "anim-pop data-[state=closed]:animate-out",
+            side !== "center" && "anim-panel data-[state=closed]:animate-out",
             side === "center" &&
               "left-1/2 top-1/2 max-h-[min(720px,92dvh)] w-[min(560px,92vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-modal border border-default",
             side === "center" &&

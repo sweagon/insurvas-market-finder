@@ -274,7 +274,7 @@ export function DataTable<T>({
                   role="columnheader"
                   aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
                   className={cn(
-                    "group/header sticky top-0 z-20 flex h-10 items-center gap-1 bg-surface2 px-2",
+                    "group/header sticky top-0 z-20 flex h-control items-center gap-1 bg-surface2 px-2",
                     meta?.align === "right" && "justify-end",
                     i === 0 && "left-[42px] z-30 shadow-[1px_0_0_var(--border-subtle)]",
                   )}

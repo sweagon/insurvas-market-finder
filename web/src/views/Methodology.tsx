@@ -212,6 +212,9 @@ export default function Methodology() {
                 </div>
               ))}
             </dl>
+            <p className="mt-4 text-caption text-secondary">
+              Source: 2026 Insurance Barometer Study, LIMRA and Life Happens
+            </p>
           </Card>
           </div>
 

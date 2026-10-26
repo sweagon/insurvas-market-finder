@@ -1,7 +1,9 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "./state/store";
 import { useView } from "./state/navigation";
+import { useDocumentTitle } from "./state/title";
+import { ErrorBoundary } from "./design-system/patterns/ErrorBoundary";
 import { loadCore, loadMapLens, loadRankings, scoresFromRankings } from "./data/load";
 import { useUrlSync } from "./state/url";
 import { Sidebar } from "./design-system/patterns/Sidebar";
@@ -87,6 +89,7 @@ function NotFound({ title = "Page not found", reason = "This route does not exis
 }
 
 function Shell() {
+  const location = useLocation();
   const {
     setData,
     setLoadError,
@@ -107,6 +110,7 @@ function Shell() {
   const { view, setView } = useView();
   const selected = counties.find((c) => c.fips === selectedFips);
   const selectedScore = selected?.scores?.[lens];
+  useDocumentTitle(view === "explore" ? "Explore" : view);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -198,8 +202,8 @@ function Shell() {
     return (
       <div className="flex h-[100dvh] items-center justify-center p-6">
         <EmptyState
-          title="Loading market data"
-          reason={view === "explore" ? "Fetching the map for this lens." : "Fetching county scores and rankings."}
+          title="Loading"
+          reason="Preparing market data"
         />
       </div>
     );
@@ -209,16 +213,25 @@ function Shell() {
   if (view === "print") {
     return (
       <Suspense fallback={<EmptyState title="Preparing brief" reason="Loading the print layout." />}>
-        <Routes>
-          <Route path="/print/:fips" element={<PrintBrief />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/print/:fips" element={<PrintBrief />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </Suspense>
     );
   }
 
   return (
-    <div className="grid h-[100dvh] min-h-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
+    <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-toast focus:rounded-control focus:border focus:border-default focus:bg-surface1 focus:px-3 focus:py-2 focus:text-body-sm focus:text-primary"
+      >
+        Skip to main content
+      </a>
+      <div className="grid h-[100dvh] min-h-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
       <aside className="col-start-1 row-span-2 hidden min-h-0 md:block">
         <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
       </aside>
@@ -229,29 +242,32 @@ function Shell() {
           onExport={() => setExportOpen(true)}
           onShare={() => setShareOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
-          onOpenMobileNav={() => setMobileNavOpen(true)}
         />
       </header>
       <main className="relative col-start-2 row-start-2 flex min-h-0 min-w-0 flex-col overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
         <StaleDataBanner />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <Suspense fallback={<EmptyState title="Loading view" reason="Preparing module" />}>
-            <Routes>
-              <Route path="/" element={<Explore />} />
-              <Route path="/rankings" element={<Rankings />} />
-              <Route path="/compare" element={<Compare />} />
-              <Route path="/scatter" element={<Scatter />} />
-              <Route path="/sensitivity" element={<Sensitivity />} />
-              <Route path="/methodology" element={<Methodology />} />
-              <Route path="/area/:fips" element={<AreaRoute />} />
-              <Route path="/print/:fips" element={<PrintBrief />} />
-              <Route path="/design" element={<DesignGallery />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+        <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
+          <ErrorBoundary>
+            <Suspense fallback={<EmptyState title="Loading view" reason="Preparing module" />}>
+              <div key={location.pathname} className="anim-page h-full">
+              <Routes>
+                <Route path="/" element={<Explore />} />
+                <Route path="/rankings" element={<Rankings />} />
+                <Route path="/compare" element={<Compare />} />
+                <Route path="/scatter" element={<Scatter />} />
+                <Route path="/sensitivity" element={<Sensitivity />} />
+                <Route path="/methodology" element={<Methodology />} />
+                <Route path="/area/:fips" element={<AreaRoute />} />
+                <Route path="/print/:fips" element={<PrintBrief />} />
+                <Route path="/design" element={<DesignGallery />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              </div>
+            </Suspense>
+          </ErrorBoundary>
         </div>
+        {view !== "compare" && <CompareTray />}
         <FooterBar />
-        <CompareTray />
       </main>
       <BottomTabBar onMore={() => setMobileNavOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
@@ -264,13 +280,13 @@ function Shell() {
       <Modal open={mobileNavOpen} onOpenChange={setMobileNavOpen} title="Menu" side="left">
         <nav className="space-y-1">
           {(["explore", "rankings", "compare", "scatter", "sensitivity", "methodology"] as const).map((v) => (
-            <button key={v} type="button" onClick={() => { setView(v); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body capitalize text-secondary hover:bg-surface2 hover:text-primary">{v}</button>
+            <button key={v} type="button" onClick={() => { setView(v); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body capitalize text-secondary hover:bg-surface2 hover:text-primary">{v}</button>
           ))}
         </nav>
         <div className="mt-4 space-y-1 border-t border-subtle pt-3">
-          <button type="button" onClick={() => { setShareOpen(true); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Share this view</button>
-          <button type="button" onClick={() => { setExportOpen(true); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Export data</button>
-          <button type="button" onClick={() => { setSettingsOpen(true); setMobileNavOpen(false); }} className="block min-h-11 w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Settings and theme</button>
+          <button type="button" onClick={() => { setShareOpen(true); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Share this view</button>
+          <button type="button" onClick={() => { setExportOpen(true); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Export data</button>
+          <button type="button" onClick={() => { setSettingsOpen(true); setMobileNavOpen(false); }} className="block min-h-row w-full rounded-control px-3 py-2 text-left text-body text-secondary hover:bg-surface2 hover:text-primary">Settings and theme</button>
         </div>
       </Modal>
       {selected && selectedScore && view !== "area" && (
@@ -293,15 +309,15 @@ function Shell() {
           }
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-caption text-tertiary">ACS 2020–2024 · {compare.length} selected</span>
+              <span className="self-center text-caption text-tertiary">ACS 2020–2024 · {compare.length} selected</span>
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => setBriefOpen(true)} className="min-h-9 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                <button type="button" onClick={() => setBriefOpen(true)} className="inline-flex h-control items-center justify-center rounded-control border border-default px-3 text-caption text-secondary hover:text-primary">
                   Brief
                 </button>
-                <Link to={`/area/${selected.fips}`} className="min-h-9 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                <Link to={`/area/${selected.fips}`} className="inline-flex h-control items-center justify-center rounded-control border border-default px-3 text-caption text-secondary hover:text-primary">
                   Full page
                 </Link>
-                <button type="button" onClick={() => toggleCompare(selected.fips)} className="min-h-9 rounded-control border border-default px-3 py-1.5 text-caption text-secondary hover:text-primary">
+                <button type="button" onClick={() => toggleCompare(selected.fips)} className="inline-flex h-control items-center justify-center rounded-control border border-default px-3 text-caption text-secondary hover:text-primary">
                   {compare.includes(selected.fips) ? "Remove from compare" : "Add to compare"}
                 </button>
               </div>
@@ -311,7 +327,8 @@ function Shell() {
           <AreaPage embedded />
         </Drawer>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

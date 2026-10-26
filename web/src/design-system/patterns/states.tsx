@@ -79,14 +79,16 @@ export function EmptyState({
 export function ErrorState({
   message,
   onRetry,
+  title = "We could not load the data",
 }: {
   message: string;
   onRetry?: () => void;
+  title?: string;
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center" role="alert">
       <WireframeMotif className="text-negative" />
-      <h3 className="text-h3 text-primary">We could not load the data</h3>
+      <h3 className="text-h3 text-primary">{title}</h3>
       <p className="max-w-md text-body text-secondary">
         {message}. Check your connection and try again.
       </p>

@@ -13,10 +13,16 @@ export default defineConfig({
     chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
+        // tslib is shared by the app shell (Radix scroll lock) and ECharts.
+        // Without its own chunk Rollup parks it inside the ECharts vendor
+        // chunk, which would make the entry statically import all of
+        // ECharts (~203 kB gzip extra on first paint).
         manualChunks: (id) =>
-          id.includes("/node_modules/echarts/") || id.includes("/node_modules/zrender/")
-            ? "echarts"
-            : undefined,
+          id.includes("/node_modules/tslib/")
+            ? "tslib"
+            : id.includes("/node_modules/echarts/") || id.includes("/node_modules/zrender/")
+              ? "echarts"
+              : undefined,
       },
     },
   },

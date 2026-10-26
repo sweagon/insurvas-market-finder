@@ -64,7 +64,7 @@ export function MapLegend({
           type="button"
           onClick={onReset}
           aria-label="Reset class breaks to quantiles"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-tertiary hover:bg-surface2 hover:text-primary"
+          className="inline-flex h-control w-control shrink-0 items-center justify-center rounded-control text-tertiary hover:bg-surface2 hover:text-primary"
         >
           <RotateCcw size={13} aria-hidden />
         </button>

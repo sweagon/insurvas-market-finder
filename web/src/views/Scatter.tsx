@@ -132,7 +132,7 @@ export default function Scatter() {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as AxisId)}
-        className="h-10 min-w-0 flex-1 rounded-control border border-default bg-surface1 px-2 text-body-sm text-primary sm:w-auto sm:flex-none"
+        className="h-control min-w-0 flex-1 rounded-control border border-default bg-surface1 px-2 text-body-sm text-primary sm:w-auto sm:flex-none"
       >
         {AXES.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
       </select>

@@ -22,7 +22,7 @@ export function Card({
   return (
     <section className={cn("rounded-card border border-subtle bg-surface1", className)}>
       {(title || link) && (
-        <header className="flex items-center gap-2 border-b border-subtle px-[var(--card-pad)] py-3">
+        <header className="flex shrink-0 items-center gap-2 border-b border-subtle px-[var(--card-pad)] py-3">
           {title && <h3 className="text-h3 text-primary">{title}</h3>}
           {info && (
             <span className="text-tertiary" title={info} aria-label={info}>

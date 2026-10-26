@@ -21,8 +21,7 @@ export function Tooltip({
           side={side}
           sideOffset={6}
           className={cn(
-            "glass l3 z-tooltip max-w-xs rounded-control px-2.5 py-1.5 text-caption text-primary",
-            "data-[state=delayed-open]:animate-in data-[state=closed]:animate-out",
+            "glass l3 anim-pop z-tooltip max-w-xs rounded-control px-2.5 py-1.5 text-caption text-primary",
           )}
         >
           {content}

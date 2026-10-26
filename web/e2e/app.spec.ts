@@ -38,9 +38,15 @@ test("explore renders the canvas map, legend and controls", async ({ page }, tes
 
 test("map layer and legend breaks remain operable", async ({ page }, testInfo) => {
   await page.goto("/");
-  const layer = page.getByLabel("Map layer");
-  await expect(layer).toBeVisible();
-  await layer.selectOption("need");
+  if (testInfo.project.name === "mobile") {
+    const layer = page.getByRole("combobox", { name: "Map layer" });
+    await expect(layer).toBeVisible();
+    await layer.selectOption("need");
+  } else {
+    const group = page.getByRole("radiogroup", { name: "Map layer" });
+    await expect(group).toBeVisible();
+    await group.getByRole("radio", { name: "Need" }).click();
+  }
   if (testInfo.project.name === "mobile") {
     await page.getByRole("button", { name: "Legend" }).click();
   }

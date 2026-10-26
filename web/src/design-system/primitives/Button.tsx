@@ -24,9 +24,9 @@ const variants: Record<ButtonVariant, string> = {
 
 const sizes: Record<ButtonSize, string> = {
   sm: "h-8 px-3 text-body-sm gap-1.5",
-  md: "h-10 px-4 text-body gap-2",
-  lg: "h-12 px-5 text-h3 gap-2",
-  icon: "h-10 w-10 justify-center",
+  md: "h-control max-md:min-h-row px-4 text-body gap-2",
+  lg: "h-10 px-5 text-h3 gap-2",
+  icon: "h-control w-control justify-center max-md:h-row max-md:w-row",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -67,7 +67,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
           "disabled:cursor-not-allowed disabled:opacity-50",
           variant !== "link" && sizes[size],
-          size === "icon" && "h-10 w-10 p-0",
+          size === "icon" && "h-control w-control p-0 max-md:h-row max-md:w-row",
           variants[variant],
           className,
         )}

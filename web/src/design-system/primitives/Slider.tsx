@@ -25,7 +25,7 @@ export function Slider({
   ...rest
 }: SliderProps) {
   return (
-    <div className={cn("relative flex h-10 items-center", className)}>
+    <div className={cn("relative flex h-control items-center", className)}>
       {histogram && histogram.length > 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-6 items-end gap-px px-2.5" aria-hidden>
           {histogram.map((h, i) => (

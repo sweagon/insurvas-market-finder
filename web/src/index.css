@@ -126,6 +126,59 @@
     background: var(--bg-surface-1);
   }
 
+  @keyframes motion-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes motion-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes motion-pop-in {
+    from { opacity: 0; scale: 0.97; }
+    to { opacity: 1; scale: 1; }
+  }
+  @keyframes motion-pop-out {
+    from { opacity: 1; scale: 1; }
+    to { opacity: 0; scale: 0.97; }
+  }
+  @keyframes motion-panel-in {
+    from { opacity: 0.4; translate: 8px 0; }
+    to { opacity: 1; translate: 0 0; }
+  }
+  @keyframes motion-panel-out {
+    from { opacity: 1; translate: 0 0; }
+    to { opacity: 0.4; translate: 8px 0; }
+  }
+  @keyframes motion-page-in {
+    from { opacity: 0; translate: 0 4px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  .anim-fade[data-state="open"],
+  .anim-fade[data-state="delayed-open"] {
+    animation: motion-fade-in var(--dur-base) var(--ease-standard) both;
+  }
+  .anim-fade[data-state="closed"] {
+    animation: motion-fade-out var(--dur-fast) var(--ease-standard) both;
+  }
+  .anim-pop[data-state="open"],
+  .anim-pop[data-state="delayed-open"] {
+    animation: motion-pop-in var(--dur-base) var(--ease-standard) both;
+  }
+  .anim-pop[data-state="closed"] {
+    animation: motion-pop-out var(--dur-fast) var(--ease-standard) both;
+  }
+  .anim-panel[data-state="open"] {
+    animation: motion-panel-in var(--dur-slow) var(--ease-emphasized) both;
+  }
+  .anim-panel[data-state="closed"] {
+    animation: motion-panel-out var(--dur-base) var(--ease-standard) both;
+  }
+  .anim-page {
+    animation: motion-page-in var(--dur-base) var(--ease-standard) both;
+  }
+
   .hatch {
     background-image: repeating-linear-gradient(
       -45deg,
@@ -154,6 +207,15 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+[data-reduce-motion="1"] *,
+[data-reduce-motion="1"] *::before,
+[data-reduce-motion="1"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 @page {

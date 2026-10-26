@@ -93,27 +93,15 @@ export function RobustPickBadge({ className }: { className?: string }) {
 /** Score chip: 0–100 with a 4px bar underneath (D.3). */
 export function ScoreChip({
   value,
-  color = "var(--accent)",
   className,
 }: {
   value: number | null;
-  color?: string;
   className?: string;
 }) {
   if (value == null) return <span className="text-tertiary">—</span>;
   return (
     <span className={cn("inline-flex flex-col items-end gap-1", className)}>
       <span className="num text-num-md">{Math.round(value)}</span>
-      <span
-        className="h-1 w-10 overflow-hidden rounded-pill bg-surface3"
-        role="img"
-        aria-label={`Score ${Math.round(value)} of 100`}
-      >
-        <span
-          className="block h-full rounded-pill"
-          style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }}
-        />
-      </span>
     </span>
   );
 }

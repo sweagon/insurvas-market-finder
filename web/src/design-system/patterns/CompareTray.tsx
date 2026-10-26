@@ -15,7 +15,7 @@ export function CompareTray() {
     .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-panel flex justify-center px-2 md:static md:bottom-auto md:px-3 md:pb-3 lg:pb-4">
+    <div className="pointer-events-none z-panel flex w-full justify-center px-3 py-2 md:absolute md:inset-x-0 md:bottom-[calc(var(--control-height)+0.75rem)] md:px-3 md:py-0 lg:px-4">
       <div className="glass l3 pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-2 rounded-panel border px-3 py-2 md:flex-nowrap md:rounded-pill">
         <span className="text-caption text-secondary">
           {items.length} selected

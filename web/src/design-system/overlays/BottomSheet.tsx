@@ -56,11 +56,11 @@ export function BottomSheet({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-drawer bg-scrim data-[state=open]:animate-in data-[state=closed]:animate-out" />
+        <DialogPrimitive.Overlay className="anim-fade fixed inset-0 z-drawer bg-scrim data-[state=open]:animate-in data-[state=closed]:animate-out" />
         <DialogPrimitive.Content
           ref={content}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-drawer flex flex-col overflow-hidden rounded-t-panel border border-default bg-surface1 shadow-l4 focus:outline-none",
+            "anim-fade fixed inset-x-0 bottom-0 z-drawer flex flex-col overflow-hidden rounded-t-panel border border-default bg-surface1 shadow-l4 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out",
             !dragging && "transition-[height] duration-300 ease-emphasized",
           )}
           style={{

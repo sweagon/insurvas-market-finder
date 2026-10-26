@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStore, weightsFor } from "../state/store";
+import { useDocumentTitle } from "../state/title";
 import { Brand } from "../design-system/patterns/Brand";
 import { Waterfall } from "../design-system/charts";
 import { EmptyState } from "../design-system/patterns/states";
@@ -26,6 +27,7 @@ export default function PrintBrief() {
   useEffect(() => {
     if (fips && selectedFips !== fips) select(fips);
   }, [fips, selectedFips, select]);
+  useDocumentTitle("Print brief");
 
   const c = counties.find((x) => x.fips === fips);
   if (!c) {
@@ -216,11 +218,11 @@ export default function PrintBrief() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="min-h-10 rounded-control bg-accent px-4 py-1.5 text-body-sm text-onaccent"
+          className="min-h-control rounded-control bg-accent px-4 py-1.5 text-body-sm text-onaccent"
         >
           Print
         </button>
-        <Link to={`/area/${c.fips}`} className="min-h-10 rounded-control border border-default px-4 py-1.5 text-body-sm text-secondary">
+        <Link to={`/area/${c.fips}`} className="min-h-control rounded-control border border-default px-4 py-1.5 text-body-sm text-secondary">
           Back to area
         </Link>
       </div>

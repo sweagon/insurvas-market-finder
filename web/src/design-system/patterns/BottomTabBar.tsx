@@ -29,7 +29,7 @@ export function BottomTabBar({ onMore }: { onMore: () => void }) {
             onClick={() => setView(item.id)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 text-[10px]",
+              "relative flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-[10px]",
               active ? "text-accenttext" : "text-tertiary",
             )}
           >
@@ -48,7 +48,7 @@ export function BottomTabBar({ onMore }: { onMore: () => void }) {
       <button
         type="button"
         onClick={onMore}
-        className="flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-tertiary"
+        className="flex h-full flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-tertiary"
       >
         <Menu size={20} aria-hidden />
         More

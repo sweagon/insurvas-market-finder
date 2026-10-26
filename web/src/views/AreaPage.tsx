@@ -7,7 +7,6 @@ import { KpiStrip, KpiCell } from "../design-system/patterns/kpi";
 import { RankBadge, ScoreChip, ConfidenceBadge, RobustPickBadge } from "../design-system/primitives/badges";
 import { popCompact, scoreRange, rankRange, topHalf, score, metricValue } from "../state/format";
 import { SUBSCORE_ORDER, SUBSCORE_LABEL, SUBSCORE_COLOR } from "../state/lensMeta";
-import { MetricLabel } from "../design-system/patterns/MetricLabel";
 import { Breadcrumb } from "../design-system/patterns/Breadcrumb";
 import { ChartFrame, RadarChart, SubScoreBars, SubScoreTable, Waterfall, type RadarSeries } from "../design-system/charts";
 import { Button } from "../design-system/primitives/Button";
@@ -211,18 +210,18 @@ export default function AreaPage({ embedded = false }: { embedded?: boolean }) {
         </div>
 
         <Card title="Key metrics" info="Public data; race, ethnicity, national origin, religion and disability are never used (R7).">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-3">
             {HIGHLIGHT_METRICS.map((id) => {
               const m = metricById(id);
               if (!m) return null;
               const v = c.metrics?.[id];
               return (
-                <div key={id} className="flex items-baseline justify-between gap-3 border-b border-subtle pb-2">
-                  <div className="min-w-0">
-                    <MetricLabel metric={m} county={c} className="text-body-sm text-secondary" />
-                    <div className="text-caption text-tertiary">{m.source.toUpperCase()} · {m.vintage}</div>
+                <div key={id} className="flex items-start justify-between gap-3 border-b border-subtle pb-2 last:border-0 last:pb-0">
+                  <div className="min-w-0 flex-1 pr-1">
+                    <div className="text-body-sm text-secondary break-words hyphens-auto leading-snug [overflow-wrap:anywhere]">{m.label}</div>
+                    <div className="mt-0.5 text-caption text-tertiary">{m.source.toUpperCase()} · {m.vintage}</div>
                   </div>
-                  <div className="num shrink-0 text-body text-primary">{metricValue(m.unit, typeof v === "number" ? v : null, { compact: true })}</div>
+                  <div className="num shrink-0 text-body text-primary text-right">{metricValue(m.unit, typeof v === "number" ? v : null, { compact: true })}</div>
                 </div>
               );
             })}

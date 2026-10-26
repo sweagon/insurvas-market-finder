@@ -1,10 +1,10 @@
 import { cn } from "../cn";
-import { Download, Filter, Menu, Search, Share2, Settings } from "../icons";
+import { Download, Filter, Search, Share2, Settings } from "../icons";
 import { useStore } from "../../state/store";
 import { useView } from "../../state/navigation";
 import { LENS_ORDER } from "../../state/lensMeta";
 import { ThemeToggle } from "./ThemeToggle";
-import { LensSwitcher } from "./LensSwitcher";
+import { LensSwitcher, LensMenu } from "./LensSwitcher";
 import { Button } from "../primitives/Button";
 import { Tooltip } from "../primitives/tooltip";
 import { usePreferences } from "../providers/PreferencesProvider";
@@ -20,14 +20,12 @@ export function TopBar({
   onExport,
   onShare,
   onOpenSettings,
-  onOpenMobileNav,
 }: {
   onOpenPalette: () => void;
   onOpenFilters: () => void;
   onExport: () => void;
   onShare: () => void;
   onOpenSettings: () => void;
-  onOpenMobileNav: () => void;
 }) {
   const { lens, setLens, catalog } = useStore();
   const { view, setView } = useView();
@@ -35,15 +33,6 @@ export function TopBar({
 
   return (
     <header className="sticky top-0 z-sticky flex h-14 min-w-0 items-center gap-2 border-b border-subtle bg-surface1/95 px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] backdrop-blur md:gap-3 md:px-5">
-      <button
-        type="button"
-        onClick={onOpenMobileNav}
-        aria-label="Open navigation"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-secondary hover:bg-surface2 md:hidden"
-      >
-        <Menu size={20} aria-hidden />
-      </button>
-
       <span className="md:hidden">
         <Brand tone={theme} variant="mark" className="h-7 w-7" alt="Insurvas Market Finder" />
       </span>
@@ -60,12 +49,15 @@ export function TopBar({
         <div className="hidden 2xl:block">
           <LensSwitcher />
         </div>
-        <label className="2xl:hidden">
+        <div className="hidden md:block 2xl:hidden">
+          <LensMenu />
+        </div>
+        <label className="md:hidden">
           <span className="sr-only">Strategy lens</span>
           <select
             value={lens}
             onChange={(e) => setLens(e.target.value as typeof lens)}
-            className="h-10 max-w-28 rounded-control border border-default bg-surface2 px-2 text-body-sm text-primary sm:max-w-40"
+            className="h-control max-w-28 rounded-control border border-default bg-surface2 px-2 text-body-sm text-primary sm:max-w-40"
           >
             {LENS_ORDER.map((l) => (
               <option key={l} value={l}>{catalog?.lenses?.[l]?.label ?? l}</option>
@@ -77,14 +69,15 @@ export function TopBar({
           type="button"
           onClick={onOpenPalette}
           className={cn(
-            "flex h-control items-center gap-2 rounded-control border border-default bg-surface2 px-3 text-body-sm text-tertiary",
+            "flex h-control flex-1 items-center gap-2 rounded-control border border-default bg-surface2 px-3 text-body-sm text-tertiary",
             "hover:text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
           )}
           aria-label="Search areas and actions"
         >
           <Search size={16} aria-hidden />
-          <span className="hidden xl:inline">Search</span>
-          <kbd className="hidden rounded border border-default px-1.5 font-mono text-[10px] xl:inline">
+          <span className="hidden xl:inline">Search areas, lenses, or actions</span>
+          <span className="hidden lg:inline xl:hidden">Search</span>
+          <kbd className="ml-auto hidden rounded border border-default px-1.5 font-mono text-[10px] xl:inline">
             ⌘K
           </kbd>
         </button>
