@@ -65,9 +65,9 @@ export function Drawer({
           className={cn(
             "fixed z-drawer flex flex-col border-default bg-surface1 shadow-l4 focus:outline-none",
             "anim-panel inset-0 h-[100dvh] max-h-none rounded-none data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[min(560px,86vw)] md:rounded-l-panel",
-            "xl:w-[min(640px,60vw)]",
-            docked && "2xl:w-[min(560px,48vw)]",
+            "md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[min(680px,92vw)] md:rounded-l-panel",
+            "xl:w-[min(780px,70vw)]",
+            docked && "2xl:w-[min(680px,56vw)]",
           )}
           style={{ transitionDuration: "var(--dur-slow)", transitionTimingFunction: "var(--ease-emphasized)" }}
         >
