@@ -37,3 +37,7 @@ web/public/data/*.tmp
 # Playwright
 web/test-results/
 web/playwright-report/
+# Local-only development files
+Senior Life Insurance Market Finder Analysis, Blueprint and Master Prompt.md
+prompt.md
+docs/PITCH_SCRIPT.md
