@@ -57,15 +57,15 @@ export default function Compare() {
         actions={compare.length > 0 ? <button type="button" onClick={clearCompare} className="text-caption text-accenttext">Clear all</button> : undefined}
       />
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4 md:p-6">
-        {items.length === 0 && (
+        {items.length < 2 && (
           <>
-            <Card className="py-10 text-center text-secondary">No counties selected. Start with one of this lens's leaders.</Card>
+            <Card className="py-8 text-center text-secondary">{items.length === 0 ? "No counties selected. Add at least one more to compare side by side." : "Add another county to compare side by side."}</Card>
             <Card title="Suggested comparisons">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {ranked.map((c) => {
+                {ranked.filter((c) => !compare.includes(c.fips)).map((c) => {
                   const s = c.scores[lens];
                   return (
-                    <button key={c.fips} type="button" onClick={() => toggleCompare(c.fips)} className="flex items-center gap-3 rounded-control border border-subtle px-3 py-2 text-left hover:bg-surface2">
+                    <button key={c.fips} type="button" onClick={() => toggleCompare(c.fips)} disabled={compare.length >= MAX_COMPARE} className="flex items-center gap-3 rounded-control border border-subtle px-3 py-2 text-left transition-colors hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-50">
                       <Monogram abbr={stateAbbr(c.state)} size={28} color={LENS_COLOR[lens]} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-body-sm text-primary">{c.name}</span>

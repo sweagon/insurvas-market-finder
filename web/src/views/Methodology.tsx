@@ -34,8 +34,8 @@ export default function Methodology() {
       />
       <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[190px_minmax(0,1fr)]">
-          <nav aria-label="On this page" className="hidden self-start lg:block">
-            <div className="sticky top-0 space-y-1 text-body-sm">
+          <nav aria-label="On this page" className="hidden lg:block">
+            <div className="sticky top-[calc(var(--topbar-height,3.5rem)+1rem)] space-y-1 text-body-sm">
               <p className="mb-2 text-micro uppercase text-tertiary">On this page</p>
               {[
                 ["overview", "Overview"],
@@ -49,7 +49,7 @@ export default function Methodology() {
                 ["downloads", "Download"],
                 ["limitations", "Limitations"],
               ].map(([id, label]) => (
-                <a key={id} href={`#${id}`} className="block rounded px-2 py-1 text-secondary hover:bg-surface2 hover:text-primary">
+                <a key={id} href={`#${id}`} className="block rounded px-2 py-1 text-secondary transition-colors hover:bg-surface2 hover:text-primary">
                   {label}
                 </a>
               ))}
