@@ -53,7 +53,7 @@ export function Slider({
           <SliderPrimitive.Thumb
             key={i}
             className={cn(
-              "relative block h-5 w-5 rounded-pill bg-surface1 shadow-l2 after:absolute after:-inset-2 after:content-['']",
+              "relative block h-5 w-5 rounded-pill bg-surface1 shadow-l2 transition-transform hover:scale-105 after:absolute after:-inset-2 after:content-['']",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focusring",
             )}
             style={{ border: "2px solid var(--accent)" }}

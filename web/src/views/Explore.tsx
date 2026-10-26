@@ -192,21 +192,22 @@ export default function Explore() {
   );
 
   const layerPicker = (
-    <label className="glass flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-control border px-2.5 shadow-l2 transition-all duration-fast hover:border-strong">
+    <div className="glass flex h-control shrink-0 items-center gap-2 rounded-control border pl-2.5 pr-1.5 shadow-l2 transition-all duration-fast hover:border-strong">
       <Layers size={15} className="shrink-0 text-tertiary" aria-hidden />
       <span className="sr-only">Map layer</span>
       <select
         value={mapLayer}
         onChange={(event) => setMapLayer(event.target.value as MapLayer)}
-        className="h-full min-w-0 max-w-56 bg-transparent text-body-sm text-primary outline-none transition-colors duration-fast"
+        className="h-full min-w-0 max-w-56 bg-transparent text-body-sm text-primary outline-none transition-colors duration-fast cursor-pointer"
+        aria-label="Map layer"
       >
         {LAYER_OPTIONS.map((opt) => (
-          <option key={opt.id} value={opt.id}>
+          <option key={opt.id} value={opt.id} className="bg-surface1 text-primary">
             {opt.label}
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 
   return (
