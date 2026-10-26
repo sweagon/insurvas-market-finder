@@ -146,10 +146,10 @@ def _contrast(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
 
 
 def _og_image(dark_logo: Image.Image) -> None:
-    W, H = 1200, 630
-    card = Image.new("RGB", (W, H), DARK_BG)
+    w, h = 1200, 630
+    card = Image.new("RGB", (w, h), DARK_BG)
     draw = ImageDraw.Draw(card)
-    draw.rectangle((0, 0, W, 10), fill=ACCENT)
+    draw.rectangle((0, 0, w, 10), fill=ACCENT)
 
     logo = dark_logo.copy()
     logo.thumbnail((320, 80), Image.LANCZOS)
